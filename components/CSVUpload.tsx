@@ -17,9 +17,7 @@ export function CSVUpload({ onData }: CSVUploadProps) {
     Papa.parse<Task>(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (result) => {
-        onData(result.data);
-      },
+      complete: (result) => onData(result.data),
     });
   };
 
@@ -43,14 +41,11 @@ export function CSVUpload({ onData }: CSVUploadProps) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4">
+    <div className="flex flex-col items-center justify-center min-h-[55vh] gap-5 px-4">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-white">
-          Ops Intelligence Dashboard
-        </h2>
-        <p className="text-slate-400 max-w-md">
-          Upload a CSV of operational tasks to surface AI-powered insights,
-          bottlenecks, and workload patterns.
+        <h2 className="text-xl font-semibold text-[#d0d8ec]">Upload your operations CSV</h2>
+        <p className="text-muted text-sm max-w-sm">
+          Drop in a CSV of tasks, assignees, and due dates. Claude will surface bottlenecks, overdue patterns, and workload gaps.
         </p>
       </div>
 
@@ -61,41 +56,34 @@ export function CSVUpload({ onData }: CSVUploadProps) {
         onClick={() => inputRef.current?.click()}
         className={`w-full max-w-md rounded-2xl border-2 border-dashed cursor-pointer transition-all p-10 text-center ${
           dragging
-            ? "border-indigo-500 bg-indigo-900/20"
-            : "border-slate-600 bg-slate-800/40 hover:border-slate-500 hover:bg-slate-800/60"
+            ? "border-violet-500/50 bg-violet-950/20"
+            : "border-[#1c2235] bg-card hover:border-[#2d3450] hover:bg-[#131825]"
         }`}
       >
-        <Upload className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-        <p className="text-slate-300 font-medium">Drop CSV here or click to browse</p>
-        <p className="text-slate-500 text-sm mt-1">
-          Columns: task_id, task_name, assignee, status, priority, due_date…
+        <Upload className="w-6 h-6 text-muted mx-auto mb-3" />
+        <p className="text-[#8b96b0] text-sm font-medium">Drop CSV here or click to browse</p>
+        <p className="text-muted text-xs mt-1.5">
+          task_id · task_name · assignee · status · priority · due_date…
         </p>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".csv"
-          className="hidden"
-          onChange={handleFile}
-        />
+        <input ref={inputRef} type="file" accept=".csv" className="hidden" onChange={handleFile} />
       </div>
 
-      <div className="flex items-center gap-3 text-slate-500">
-        <span className="h-px w-16 bg-slate-700" />
-        <span className="text-sm">or</span>
-        <span className="h-px w-16 bg-slate-700" />
+      <div className="flex items-center gap-3 text-muted">
+        <span className="h-px w-12 bg-[#1c2235]" />
+        <span className="text-xs">or</span>
+        <span className="h-px w-12 bg-[#1c2235]" />
       </div>
 
       <button
         onClick={loadSample}
-        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-colors"
+        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600/80 hover:bg-violet-600 text-white font-medium text-sm transition-colors"
       >
         <FileText className="w-4 h-4" />
         Load Sample Dataset
       </button>
 
-      <p className="text-slate-600 text-xs text-center max-w-sm">
-        Sample includes 35 tasks across Engineering, Product, Operations,
-        Security & HR — designed to surface real bottleneck and overdue patterns.
+      <p className="text-[#4a5568] text-xs text-center max-w-xs">
+        35-task sample across Engineering, Product, Operations, Security & HR — preloaded with real bottleneck patterns.
       </p>
     </div>
   );

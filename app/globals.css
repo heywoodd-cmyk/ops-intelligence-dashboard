@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f172a;
-  --foreground: #e2e8f0;
+  --background: #0c0f1a;
+  --foreground: #d0d8ec;
 }
 
 @theme inline {
@@ -10,9 +10,23 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Calm dark palette */
+  --color-page: #0c0f1a;
+  --color-card: #111520;
+  --color-card-border: #1c2235;
+  --color-surface: #161b2a;
+  --color-muted: #6b778f;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Utility classes for the calm palette */
+.bg-page    { background-color: #0c0f1a; }
+.bg-card    { background-color: #111520; }
+.bg-surface { background-color: #161b2a; }
+.border-card-border { border-color: #1c2235; }
+.text-muted { color: #6b778f; }

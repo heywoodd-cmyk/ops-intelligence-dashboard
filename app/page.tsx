@@ -7,14 +7,18 @@ import { WorkloadChart } from "@/components/WorkloadChart";
 import { StatusBreakdown } from "@/components/StatusBreakdown";
 import { InsightsPanel } from "@/components/InsightsPanel";
 import { TaskTable } from "@/components/TaskTable";
+import { AnalystView } from "@/components/AnalystView";
 import { Task, AnalysisResult } from "@/app/api/analyze/route";
-import { Loader2, RotateCcw, Sparkles } from "lucide-react";
+import { Loader2, RotateCcw, Sparkles, LayoutDashboard, LineChart } from "lucide-react";
+
+type View = "analyst" | "operator";
 
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<View>("analyst");
 
   const handleData = async (newTasks: Task[]) => {
     setTasks(newTasks);
@@ -28,9 +32,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tasks: newTasks }),
       });
-
       if (!res.ok) throw new Error(`API error ${res.status}`);
-
       const data: AnalysisResult = await res.json();
       setAnalysis(data);
     } catch (err) {
@@ -48,17 +50,17 @@ export default function Home() {
 
   if (tasks.length === 0) {
     return (
-      <main className="min-h-screen bg-slate-900">
-        <div className="max-w-4xl mx-auto py-16 px-4">
-          <header className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-900/40 border border-indigo-700/40 text-indigo-400 text-xs font-medium mb-4">
+      <main className="min-h-screen bg-page">
+        <div className="max-w-3xl mx-auto py-16 px-4">
+          <header className="text-center mb-10">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-950/50 border border-violet-900/40 text-violet-300 text-xs font-medium mb-5">
               <Sparkles className="w-3 h-3" />
               AI-Powered Operations
             </div>
-            <h1 className="text-4xl font-bold text-white mb-2">
+            <h1 className="text-3xl font-semibold text-[#d0d8ec] mb-2">
               Ops Intelligence Dashboard
             </h1>
-            <p className="text-slate-400">
+            <p className="text-muted text-sm">
               Surface bottlenecks, overdue patterns & workload imbalances — instantly.
             </p>
           </header>
@@ -69,73 +71,107 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-900">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <main className="min-h-screen bg-page">
+      <div className="max-w-6xl mx-auto px-4 py-7">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+        <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-900/40 border border-indigo-700/40 text-indigo-400 text-xs font-medium mb-2">
-              <Sparkles className="w-3 h-3" />
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-950/50 border border-violet-900/40 text-violet-300 text-[10px] font-medium mb-2">
+              <Sparkles className="w-2.5 h-2.5" />
               AI-Powered Operations
             </div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-xl font-semibold text-[#d0d8ec]">
               Ops Intelligence Dashboard
             </h1>
-            <p className="text-slate-500 text-sm mt-0.5">
-              {tasks.length} tasks loaded
-            </p>
+            <p className="text-muted text-xs mt-0.5">{tasks.length} tasks loaded</p>
           </div>
-          <button
-            onClick={reset}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700 text-sm transition-colors"
-          >
-            <RotateCcw className="w-4 h-4" />
-            New Upload
-          </button>
+
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center gap-0.5 bg-card border border-card-border rounded-xl p-1">
+              <button
+                onClick={() => setView("analyst")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  view === "analyst"
+                    ? "bg-violet-600/80 text-white shadow-sm"
+                    : "text-muted hover:text-[#a8b4cc]"
+                }`}
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                Analyst
+              </button>
+              <button
+                onClick={() => setView("operator")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  view === "operator"
+                    ? "bg-violet-600/80 text-white shadow-sm"
+                    : "text-muted hover:text-[#a8b4cc]"
+                }`}
+              >
+                <LineChart className="w-3.5 h-3.5" />
+                Operator
+              </button>
+            </div>
+
+            <button
+              onClick={reset}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-card border border-card-border text-muted hover:text-[#a8b4cc] text-xs transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              New Upload
+            </button>
+          </div>
         </div>
 
-        {/* Metrics */}
-        <section className="mb-6">
-          <MetricsGrid tasks={tasks} />
-        </section>
+        {/* Analyst View */}
+        {view === "analyst" && (
+          <AnalystView
+            tasks={tasks}
+            analysis={analysis}
+            loading={loading}
+            error={error}
+          />
+        )}
 
-        {/* AI Insights */}
-        <section className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-            <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
-              AI Insights
-            </h2>
-          </div>
+        {/* Operator View */}
+        {view === "operator" && (
+          <div className="space-y-5">
+            <MetricsGrid tasks={tasks} />
 
-          {loading && (
-            <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-10 flex items-center justify-center gap-3 text-slate-400">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-sm">Analyzing {tasks.length} tasks…</span>
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                <h2 className="text-[10px] font-semibold text-muted uppercase tracking-widest">
+                  AI Insights
+                </h2>
+              </div>
+
+              {loading && (
+                <div className="rounded-xl border border-card-border bg-card p-10 flex items-center justify-center gap-3 text-muted">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Analyzing {tasks.length} tasks…</span>
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-xl border border-red-900/40 bg-red-950/20 p-4 text-red-300 text-sm">
+                  <strong>Analysis failed:</strong> {error}
+                </div>
+              )}
+
+              {analysis && !loading && <InsightsPanel analysis={analysis} />}
             </div>
-          )}
 
-          {error && (
-            <div className="rounded-xl border border-red-800/40 bg-red-900/20 p-5 text-red-300 text-sm">
-              <strong>Analysis failed:</strong> {error}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <WorkloadChart tasks={tasks} />
+              <StatusBreakdown tasks={tasks} />
             </div>
-          )}
 
-          {analysis && !loading && <InsightsPanel analysis={analysis} />}
-        </section>
-
-        {/* Charts */}
-        <section className="mb-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <WorkloadChart tasks={tasks} />
-            <StatusBreakdown tasks={tasks} />
+            <TaskTable tasks={tasks} />
           </div>
-        </section>
+        )}
 
-        {/* Task Table */}
-        <section>
-          <TaskTable tasks={tasks} />
-        </section>
       </div>
     </main>
   );

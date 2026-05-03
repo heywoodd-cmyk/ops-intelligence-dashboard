@@ -8,11 +8,11 @@ interface StatusBreakdownProps {
 }
 
 const COLORS: Record<string, string> = {
-  Done: "#34d399",
-  "In Progress": "#60a5fa",
-  Blocked: "#f87171",
-  Overdue: "#fbbf24",
-  "Not Started": "#94a3b8",
+  Done: "#6ee7b7",
+  "In Progress": "#93c5fd",
+  Blocked: "#fca5a5",
+  Overdue: "#fcd34d",
+  "Not Started": "#374151",
 };
 
 export function StatusBreakdown({ tasks }: StatusBreakdownProps) {
@@ -40,39 +40,39 @@ export function StatusBreakdown({ tasks }: StatusBreakdownProps) {
     .sort((a, b) => b.value - a.value);
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-5">
-      <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-4">
+    <div className="rounded-xl border border-card-border bg-card p-5">
+      <h3 className="text-[10px] font-semibold text-muted uppercase tracking-widest mb-5">
         Status Distribution
       </h3>
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer width="100%" height={220}>
         <PieChart>
           <Pie
             data={data}
             cx="50%"
-            cy="45%"
-            innerRadius={60}
-            outerRadius={90}
-            paddingAngle={3}
+            cy="44%"
+            innerRadius={58}
+            outerRadius={88}
+            paddingAngle={2}
             dataKey="value"
+            strokeWidth={0}
           >
             {data.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={COLORS[entry.name] || "#64748b"}
-              />
+              <Cell key={`cell-${index}`} fill={COLORS[entry.name] || "#374151"} />
             ))}
           </Pie>
           <Tooltip
             contentStyle={{
-              backgroundColor: "#1e293b",
-              border: "1px solid #334155",
-              borderRadius: "8px",
-              color: "#e2e8f0",
+              backgroundColor: "#111520",
+              border: "1px solid #1c2235",
+              borderRadius: "10px",
+              color: "#d0d8ec",
+              fontSize: 12,
             }}
           />
           <Legend
-            wrapperStyle={{ color: "#94a3b8", fontSize: 12 }}
+            wrapperStyle={{ color: "#6b778f", fontSize: 11 }}
             iconType="circle"
+            iconSize={7}
           />
         </PieChart>
       </ResponsiveContainer>

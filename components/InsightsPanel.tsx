@@ -1,14 +1,7 @@
 "use client";
 
 import { AnalysisResult } from "@/app/api/analyze/route";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  TrendingUp,
-  Users,
-  Clock,
-  Zap,
-} from "lucide-react";
+import { AlertTriangle, Clock, Users, Zap } from "lucide-react";
 
 interface InsightsPanelProps {
   analysis: AnalysisResult;
@@ -17,30 +10,30 @@ interface InsightsPanelProps {
 const RISK_CONFIG = {
   low: {
     label: "Low Risk",
-    color: "text-emerald-400",
-    bg: "bg-emerald-900/20",
-    border: "border-emerald-700/40",
+    color: "text-emerald-300",
+    bg: "bg-emerald-950/25",
+    border: "border-emerald-900/40",
     dot: "bg-emerald-400",
   },
   medium: {
     label: "Medium Risk",
-    color: "text-amber-400",
-    bg: "bg-amber-900/20",
-    border: "border-amber-700/40",
+    color: "text-amber-300",
+    bg: "bg-amber-950/25",
+    border: "border-amber-900/40",
     dot: "bg-amber-400",
   },
   high: {
     label: "High Risk",
-    color: "text-orange-400",
-    bg: "bg-orange-900/20",
-    border: "border-orange-700/40",
+    color: "text-orange-300",
+    bg: "bg-orange-950/25",
+    border: "border-orange-900/40",
     dot: "bg-orange-400",
   },
   critical: {
     label: "Critical Risk",
-    color: "text-red-400",
-    bg: "bg-red-900/20",
-    border: "border-red-700/40",
+    color: "text-red-300",
+    bg: "bg-red-950/25",
+    border: "border-red-900/40",
     dot: "bg-red-400",
   },
 };
@@ -50,54 +43,40 @@ export function InsightsPanel({ analysis }: InsightsPanelProps) {
 
   return (
     <div className="space-y-4">
-      {/* Risk badge + summary */}
       <div className={`rounded-xl border ${risk.border} ${risk.bg} p-5`}>
         <div className="flex items-center gap-2 mb-3">
           <span className={`w-2 h-2 rounded-full ${risk.dot} animate-pulse`} />
-          <span className={`text-xs font-bold uppercase tracking-widest ${risk.color}`}>
+          <span className={`text-[10px] font-semibold uppercase tracking-widest ${risk.color}`}>
             {risk.label}
           </span>
         </div>
-        <p className="text-slate-200 text-sm leading-relaxed">
-          {analysis.summary}
-        </p>
+        <p className="text-[#c8d2e8] text-sm leading-relaxed">{analysis.summary}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Bottlenecks */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <InsightSection
-          icon={<AlertTriangle className="w-4 h-4 text-red-400" />}
+          icon={<AlertTriangle className="w-3.5 h-3.5 text-red-300" />}
           title="Bottlenecks"
           items={analysis.bottlenecks}
-          itemColor="text-red-300"
-          dotColor="bg-red-500"
+          dotColor="bg-red-400/70"
         />
-
-        {/* Overdue Patterns */}
         <InsightSection
-          icon={<Clock className="w-4 h-4 text-amber-400" />}
+          icon={<Clock className="w-3.5 h-3.5 text-amber-300" />}
           title="Overdue Patterns"
           items={analysis.overduePatterns}
-          itemColor="text-amber-300"
-          dotColor="bg-amber-500"
+          dotColor="bg-amber-400/70"
         />
-
-        {/* Workload Issues */}
         <InsightSection
-          icon={<Users className="w-4 h-4 text-blue-400" />}
+          icon={<Users className="w-3.5 h-3.5 text-blue-300" />}
           title="Workload Issues"
           items={analysis.workloadIssues}
-          itemColor="text-blue-300"
-          dotColor="bg-blue-500"
+          dotColor="bg-blue-400/70"
         />
-
-        {/* Top Recommendations */}
         <InsightSection
-          icon={<Zap className="w-4 h-4 text-emerald-400" />}
+          icon={<Zap className="w-3.5 h-3.5 text-violet-300" />}
           title="Top Recommendations"
           items={analysis.topRecommendations}
-          itemColor="text-emerald-300"
-          dotColor="bg-emerald-500"
+          dotColor="bg-violet-400"
           numbered
         />
       </div>
@@ -109,42 +88,34 @@ function InsightSection({
   icon,
   title,
   items,
-  itemColor,
   dotColor,
   numbered = false,
 }: {
   icon: React.ReactNode;
   title: string;
   items: string[];
-  itemColor: string;
   dotColor: string;
   numbered?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4">
+    <div className="rounded-xl border border-card-border bg-card p-4">
       <div className="flex items-center gap-2 mb-3">
         {icon}
-        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
+        <h4 className="text-[10px] font-semibold text-muted uppercase tracking-widest">
           {title}
         </h4>
       </div>
-      <ul className="space-y-2">
+      <ul className="space-y-2.5">
         {items.map((item, i) => (
           <li key={i} className="flex items-start gap-2.5">
             {numbered ? (
-              <span
-                className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded-full ${dotColor} flex items-center justify-center text-[10px] font-bold text-slate-900`}
-              >
+              <span className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded-full ${dotColor} flex items-center justify-center text-[10px] font-bold text-[#0c0f1a]`}>
                 {i + 1}
               </span>
             ) : (
-              <span
-                className={`mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full ${dotColor}`}
-              />
+              <span className={`mt-2 flex-shrink-0 w-1.5 h-1.5 rounded-full ${dotColor}`} />
             )}
-            <span className={`text-sm ${itemColor} leading-relaxed`}>
-              {item}
-            </span>
+            <span className="text-[#a8b4cc] text-sm leading-relaxed">{item}</span>
           </li>
         ))}
       </ul>

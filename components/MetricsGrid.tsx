@@ -44,49 +44,43 @@ export function MetricsGrid({ tasks }: MetricsGridProps) {
       label: "Total Tasks",
       value: total,
       icon: BarChart2,
-      color: "text-slate-400",
-      bg: "bg-slate-800",
-      border: "border-slate-700",
+      color: "text-[#8b96b0]",
+      bg: "bg-card border-card-border",
     },
     {
       label: "Completed",
       value: `${done} (${completionRate}%)`,
       icon: CheckCircle2,
-      color: "text-emerald-400",
-      bg: "bg-emerald-900/20",
-      border: "border-emerald-800/40",
+      color: "text-emerald-300",
+      bg: "bg-emerald-950/25 border-emerald-900/40",
     },
     {
       label: "In Progress",
       value: inProgress,
       icon: Clock,
-      color: "text-blue-400",
-      bg: "bg-blue-900/20",
-      border: "border-blue-800/40",
+      color: "text-blue-300",
+      bg: "bg-blue-950/25 border-blue-900/40",
     },
     {
       label: "Overdue",
       value: overdue,
       icon: AlertTriangle,
-      color: overdue > 0 ? "text-amber-400" : "text-slate-400",
-      bg: overdue > 0 ? "bg-amber-900/20" : "bg-slate-800",
-      border: overdue > 0 ? "border-amber-800/40" : "border-slate-700",
+      color: overdue > 0 ? "text-amber-300" : "text-[#8b96b0]",
+      bg: overdue > 0 ? "bg-amber-950/25 border-amber-900/40" : "bg-card border-card-border",
     },
     {
       label: "Blocked",
       value: blocked,
       icon: XCircle,
-      color: blocked > 0 ? "text-red-400" : "text-slate-400",
-      bg: blocked > 0 ? "bg-red-900/20" : "bg-slate-800",
-      border: blocked > 0 ? "border-red-800/40" : "border-slate-700",
+      color: blocked > 0 ? "text-red-300" : "text-[#8b96b0]",
+      bg: blocked > 0 ? "bg-red-950/25 border-red-900/40" : "bg-card border-card-border",
     },
     {
       label: "Critical Open",
       value: critical,
       icon: Zap,
-      color: critical > 0 ? "text-orange-400" : "text-slate-400",
-      bg: critical > 0 ? "bg-orange-900/20" : "bg-slate-800",
-      border: critical > 0 ? "border-orange-800/40" : "border-slate-700",
+      color: critical > 0 ? "text-orange-300" : "text-[#8b96b0]",
+      bg: critical > 0 ? "bg-orange-950/25 border-orange-900/40" : "bg-card border-card-border",
     },
   ];
 
@@ -97,15 +91,15 @@ export function MetricsGrid({ tasks }: MetricsGridProps) {
         return (
           <div
             key={m.label}
-            className={`rounded-xl border ${m.bg} ${m.border} p-4 flex flex-col gap-2`}
+            className={`rounded-xl border ${m.bg} p-4 flex flex-col gap-2`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">
+              <span className="text-[10px] text-muted font-medium uppercase tracking-widest">
                 {m.label}
               </span>
-              <Icon className={`w-4 h-4 ${m.color}`} />
+              <Icon className={`w-3.5 h-3.5 ${m.color}`} />
             </div>
-            <span className={`text-2xl font-bold ${m.color}`}>{m.value}</span>
+            <span className={`text-2xl font-semibold ${m.color}`}>{m.value}</span>
           </div>
         );
       })}
