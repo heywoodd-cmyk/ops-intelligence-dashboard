@@ -2,9 +2,12 @@
 
 import { Task } from "@/app/api/analyze/route";
 import { useState } from "react";
+import { X } from "lucide-react";
 
 interface TaskTableProps {
   tasks: Task[];
+  pinnedTaskId?: string | null;
+  onClearPin?: () => void;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -22,7 +25,7 @@ const PRIORITY_STYLES: Record<string, string> = {
   Low: "text-[#6b778f]",
 };
 
-export function TaskTable({ tasks }: TaskTableProps) {
+export function TaskTable({ tasks, pinnedTaskId, onClearPin }: TaskTableProps) {
   const today = new Date().toISOString().split("T")[0];
   const [filter, setFilter] = useState<string>("All");
 
@@ -37,36 +40,75 @@ export function TaskTable({ tasks }: TaskTableProps) {
     return t.status;
   };
 
-  const filters = ["All", "Overdue", "Blocked", "In Progress", "Not Started", "Done"];
-  const filtered = filter === "All" ? tasks : tasks.filter((t) => getDisplayStatus(t) === filter);
+  const filters = [
+    "All",
+    "Overdue",
+    "Blocked",
+    "In Progress",
+    "Not Started",
+    "Done",
+  ];
+
+  // Pinned task overrides the status filter
+  const filtered = pinnedTaskId
+    ? tasks.filter((t) => t.task_id === pinnedTaskId)
+    : filter === "All"
+      ? tasks
+      : tasks.filter((t) => getDisplayStatus(t) === filter);
 
   return (
-    <div className="rounded-xl border border-card-border bg-card overflow-hidden">
+    <div id="task-table" className="rounded-xl border border-card-border bg-card overflow-hidden">
       <div className="p-4 border-b border-card-border flex items-center justify-between flex-wrap gap-3">
         <h3 className="text-[10px] font-semibold text-muted uppercase tracking-widest">
           All Tasks
         </h3>
-        <div className="flex gap-1.5 flex-wrap">
-          {filters.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                filter === f
-                  ? "bg-violet-600/80 text-white"
-                  : "bg-[#161b2a] text-[#6b778f] hover:text-[#a8b4cc] hover:bg-[#1c2235]"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
+
+        <div className="flex gap-1.5 flex-wrap items-center">
+          {/* Pinned task chip */}
+          {pinnedTaskId && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-950/60 border border-violet-800/50 text-violet-300 text-xs font-mono">
+              {pinnedTaskId}
+              <button
+                onClick={onClearPin}
+                className="hover:text-white transition-colors ml-0.5"
+                title="Clear filter"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+
+          {/* Status filters — hidden when pinned */}
+          {!pinnedTaskId &&
+            filters.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  filter === f
+                    ? "bg-violet-600/80 text-white"
+                    : "bg-[#161b2a] text-[#6b778f] hover:text-[#a8b4cc] hover:bg-[#1c2235]"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
         </div>
       </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-card-border">
-              {["ID", "Task", "Assignee", "Status", "Priority", "Due Date", "Dept"].map((h) => (
+              {[
+                "ID",
+                "Task",
+                "Assignee",
+                "Status",
+                "Priority",
+                "Due Date",
+                "Dept",
+              ].map((h) => (
                 <th
                   key={h}
                   className="text-left px-4 py-2.5 text-[10px] text-muted font-semibold uppercase tracking-widest"
@@ -80,37 +122,58 @@ export function TaskTable({ tasks }: TaskTableProps) {
             {filtered.map((t) => {
               const displayStatus = getDisplayStatus(t);
               const isOverdue = displayStatus === "Overdue";
+              const isPinned = t.task_id === pinnedTaskId;
               return (
                 <tr
                   key={t.task_id}
                   className={`border-b border-[#1c2235]/60 hover:bg-[#161b2a] transition-colors ${
-                    isOverdue ? "bg-amber-950/5" : ""
+                    isPinned
+                      ? "bg-violet-950/10 ring-1 ring-inset ring-violet-900/30"
+                      : isOverdue
+                        ? "bg-amber-950/5"
+                        : ""
                   }`}
                 >
-                  <td className="px-4 py-3 text-muted font-mono text-xs">{t.task_id}</td>
-                  <td className="px-4 py-3 text-[#c8d2e8] max-w-[240px] truncate">{t.task_name}</td>
+                  <td className="px-4 py-3 text-muted font-mono text-xs">
+                    {t.task_id}
+                  </td>
+                  <td className="px-4 py-3 text-[#c8d2e8] max-w-[240px] truncate">
+                    {t.task_name}
+                  </td>
                   <td className="px-4 py-3 text-[#8b96b0]">{t.assignee}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md border text-xs font-medium ${STATUS_STYLES[displayStatus] || STATUS_STYLES["Not Started"]}`}>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-md border text-xs font-medium ${STATUS_STYLES[displayStatus] || STATUS_STYLES["Not Started"]}`}
+                    >
                       {displayStatus}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-medium ${PRIORITY_STYLES[t.priority] || "text-muted"}`}>
+                    <span
+                      className={`text-xs font-medium ${PRIORITY_STYLES[t.priority] || "text-muted"}`}
+                    >
                       {t.priority}
                     </span>
                   </td>
-                  <td className={`px-4 py-3 text-xs tabular-nums ${isOverdue ? "text-amber-300 font-medium" : "text-muted"}`}>
+                  <td
+                    className={`px-4 py-3 text-xs tabular-nums ${isOverdue ? "text-amber-300 font-medium" : "text-muted"}`}
+                  >
                     {t.due_date || "—"}
                   </td>
-                  <td className="px-4 py-3 text-muted text-xs">{t.department}</td>
+                  <td className="px-4 py-3 text-muted text-xs">
+                    {t.department}
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <div className="py-12 text-center text-muted text-sm">No tasks match this filter.</div>
+          <div className="py-12 text-center text-muted text-sm">
+            {pinnedTaskId
+              ? `Task ${pinnedTaskId} not found in this dataset.`
+              : "No tasks match this filter."}
+          </div>
         )}
       </div>
     </div>

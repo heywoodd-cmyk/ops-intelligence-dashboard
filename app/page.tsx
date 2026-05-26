@@ -9,7 +9,14 @@ import { InsightsPanel } from "@/components/InsightsPanel";
 import { TaskTable } from "@/components/TaskTable";
 import { AnalystView } from "@/components/AnalystView";
 import { Task, AnalysisResult } from "@/app/api/analyze/route";
-import { Loader2, RotateCcw, Sparkles, LayoutDashboard, LineChart } from "lucide-react";
+import {
+  Loader2,
+  RotateCcw,
+  Sparkles,
+  LayoutDashboard,
+  LineChart,
+  ArrowRight,
+} from "lucide-react";
 
 type View = "analyst" | "operator";
 
@@ -19,12 +26,14 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("analyst");
+  const [pinnedTaskId, setPinnedTaskId] = useState<string | null>(null);
 
   const handleData = async (newTasks: Task[]) => {
     setTasks(newTasks);
     setAnalysis(null);
     setError(null);
     setLoading(true);
+    setPinnedTaskId(null);
 
     try {
       const res = await fetch("/api/analyze", {
@@ -46,6 +55,18 @@ export default function Home() {
     setTasks([]);
     setAnalysis(null);
     setError(null);
+    setPinnedTaskId(null);
+  };
+
+  /** Jump to the task table and pin the clicked task ID */
+  const handleTaskClick = (id: string) => {
+    setPinnedTaskId(id);
+    // Small delay so the pin state renders before scrolling
+    setTimeout(() => {
+      document
+        .getElementById("task-table")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   };
 
   if (tasks.length === 0) {
@@ -61,7 +82,8 @@ export default function Home() {
               Ops Intelligence Dashboard
             </h1>
             <p className="text-muted text-sm">
-              Surface bottlenecks, overdue patterns & workload imbalances — instantly.
+              Surface bottlenecks, overdue patterns & workload imbalances —
+              instantly.
             </p>
           </header>
           <CSVUpload onData={handleData} />
@@ -75,7 +97,7 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-4 py-7">
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
+        <div className="flex items-start justify-between mb-5 flex-wrap gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-950/50 border border-violet-900/40 text-violet-300 text-[10px] font-medium mb-2">
               <Sparkles className="w-2.5 h-2.5" />
@@ -124,6 +146,19 @@ export default function Home() {
           </div>
         </div>
 
+        {/* "So what?" banner — shared across both views */}
+        {analysis && !loading && analysis.topPriority && (
+          <div className="mb-5 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#13161f] border border-[#1c2235]">
+            <ArrowRight className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+            <p className="text-[#c8d2e8] text-sm font-medium">
+              {analysis.topPriority}
+            </p>
+            <span className="ml-auto flex-shrink-0 text-[9px] text-muted uppercase tracking-widest font-medium">
+              Top priority
+            </span>
+          </div>
+        )}
+
         {/* Analyst View */}
         {view === "analyst" && (
           <AnalystView
@@ -131,44 +166,75 @@ export default function Home() {
             analysis={analysis}
             loading={loading}
             error={error}
+            onTaskClick={handleTaskClick}
           />
         )}
 
         {/* Operator View */}
         {view === "operator" && (
-          <div className="space-y-5">
+          <div className="space-y-6">
+
             <MetricsGrid tasks={tasks} />
 
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-                <h2 className="text-[10px] font-semibold text-muted uppercase tracking-widest">
-                  AI Insights
-                </h2>
+            {/* AI Insights — gracefully hidden on error */}
+            {(loading || analysis) && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                  <h2 className="text-[10px] font-semibold text-muted uppercase tracking-widest">
+                    AI Insights
+                  </h2>
+                </div>
+
+                {loading && (
+                  <div className="rounded-xl border border-card-border bg-card p-10 flex items-center justify-center gap-3 text-muted">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">
+                      Analyzing {tasks.length} tasks…
+                    </span>
+                  </div>
+                )}
+
+                {analysis && !loading && (
+                  <InsightsPanel
+                    analysis={analysis}
+                    onTaskClick={handleTaskClick}
+                  />
+                )}
               </div>
+            )}
 
-              {loading && (
-                <div className="rounded-xl border border-card-border bg-card p-10 flex items-center justify-center gap-3 text-muted">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Analyzing {tasks.length} tasks…</span>
-                </div>
-              )}
-
-              {error && (
-                <div className="rounded-xl border border-red-900/40 bg-red-950/20 p-4 text-red-300 text-sm">
-                  <strong>Analysis failed:</strong> {error}
-                </div>
-              )}
-
-              {analysis && !loading && <InsightsPanel analysis={analysis} />}
-            </div>
+            {/* Error state — soft notice, charts still render below */}
+            {error && !loading && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-card border border-card-border">
+                <span className="w-1.5 h-1.5 rounded-full bg-muted mt-1.5 flex-shrink-0" />
+                <p className="text-muted text-sm">
+                  AI insights unavailable — charts and data below are still accurate.
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <WorkloadChart tasks={tasks} />
               <StatusBreakdown tasks={tasks} />
             </div>
 
-            <TaskTable tasks={tasks} />
+            <TaskTable
+              tasks={tasks}
+              pinnedTaskId={pinnedTaskId}
+              onClearPin={() => setPinnedTaskId(null)}
+            />
+          </div>
+        )}
+
+        {/* Task table also rendered in Analyst view (below the fold) so pin/scroll works */}
+        {view === "analyst" && tasks.length > 0 && (
+          <div className="mt-6">
+            <TaskTable
+              tasks={tasks}
+              pinnedTaskId={pinnedTaskId}
+              onClearPin={() => setPinnedTaskId(null)}
+            />
           </div>
         )}
 

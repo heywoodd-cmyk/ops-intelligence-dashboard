@@ -21,6 +21,7 @@ export interface Task {
 }
 
 export interface AnalysisResult {
+  topPriority: string;
   summary: string;
   bottlenecks: string[];
   overduePatterns: string[];
@@ -64,36 +65,48 @@ function buildPrompt(tasks: Task[]): string {
     )
     .join("\n");
 
-  return `You are an operations analyst. Today's date is ${today}.
+  return `You are an operations analyst. Today is ${today}.
 
-Analyze the following operational task data and produce a structured JSON response.
-
-WORKLOAD SUMMARY:
+DATA:
 ${workloadSummary}
 
-OVERDUE TASKS (${overdue.length}): ${overdue.map((t) => t.task_id).join(", ")}
-BLOCKED TASKS (${blocked.length}): ${blocked.map((t) => t.task_id).join(", ")}
+OVERDUE (${overdue.length}): ${overdue.map((t) => t.task_id).join(", ")}
+BLOCKED (${blocked.length}): ${blocked.map((t) => t.task_id).join(", ")}
 
-ALL TASKS:
+TASKS:
 ${taskList}
 
-Respond ONLY with a valid JSON object matching this exact schema:
+Respond ONLY with valid JSON matching this schema exactly:
 {
-  "summary": "2-3 sentence plain-language executive summary of what's broken and what needs immediate attention",
-  "bottlenecks": ["specific bottleneck finding 1", "specific bottleneck finding 2", ...],
-  "overduePatterns": ["specific overdue pattern 1", "specific overdue pattern 2", ...],
-  "workloadIssues": ["workload issue 1", "workload issue 2", ...],
-  "topRecommendations": ["actionable recommendation 1", "actionable recommendation 2", "actionable recommendation 3"],
+  "topPriority": "<one sentence, max 15 words, the single most urgent thing to act on right now>",
+  "summary": "<2 sentences max, plain English, what's broken and the main risk>",
+  "bottlenecks": ["<finding>", "<finding>", "<finding>"],
+  "overduePatterns": ["<finding>", "<finding>", "<finding>"],
+  "workloadIssues": ["<finding>", "<finding>", "<finding>"],
+  "topRecommendations": ["<action>", "<action>", "<action>"],
   "riskLevel": "low" | "medium" | "high" | "critical"
 }
 
-Guidelines:
-- Be specific: name assignees, task IDs, and departments
-- bottlenecks: identify where work is piling up or stalled (2-4 items)
-- overduePatterns: identify patterns in what's late (2-3 items)
-- workloadIssues: flag imbalanced or overloaded individuals (2-3 items)
-- topRecommendations: the 3 most impactful things to do THIS WEEK
-- riskLevel: overall operational health (critical if multiple blocked+overdue critical tasks)`;
+STRICT RULES — no exceptions:
+1. Every string in every array: ONE sentence, MAX 20 words.
+2. Start each finding with the number or fact. Example: "Devon has 4 blocked tasks, all in Security."
+3. Include specific task IDs (e.g. T-004) wherever relevant — especially in topRecommendations.
+4. Each array must have EXACTLY 3 items.
+5. topPriority: one sentence, max 15 words, name the specific person or task.
+6. BANNED WORDS — do not use any of these: cascading, critically, overloaded, bottleneck dependencies, throughput, systemic, escalation, bandwidth, capacity constraints, dependency chains, operational risk, blocker dependencies, compounding.
+
+GOOD examples (write like this):
+✓ topPriority: "Unblock Devon's 4 Security tasks — they're all Critical and overdue."
+✓ finding: "Devon has 4 of 5 active tasks blocked, all Critical priority."
+✓ finding: "James has 4 overdue tasks, all in Procurement with no progress logged."
+✓ recommendation: "Check in with Devon on T-004 and T-009 this week — both are Critical and blocked."
+
+BAD examples (never write like this):
+✗ "Devon Park is critically overloaded with cascading security dependencies impacting throughput."
+✗ "The procurement pipeline faces systemic bottlenecks requiring immediate escalation."
+✗ "Operational bandwidth constraints are creating compounding delivery risks."
+
+riskLevel: use "critical" if there are blocked Critical-priority tasks that are also overdue.`;
 }
 
 export async function POST(req: NextRequest) {
@@ -110,7 +123,7 @@ export async function POST(req: NextRequest) {
       model: "claude-haiku-4-5-20251001",
       max_tokens: 2048,
       system:
-        "You are a precise operations analyst. Always respond with valid JSON only, no markdown, no explanation. Keep each string value concise (under 120 characters).",
+        "You are a precise operations analyst. Respond with valid JSON only — no markdown, no prose. Every array item must be one sentence, max 20 words, plain English.",
       messages: [{ role: "user", content: prompt }],
     });
 
