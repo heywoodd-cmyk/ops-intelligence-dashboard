@@ -8,7 +8,15 @@ import { StatusBreakdown } from "@/components/StatusBreakdown";
 import { InsightsPanel } from "@/components/InsightsPanel";
 import { TaskTable } from "@/components/TaskTable";
 import { AnalystView } from "@/components/AnalystView";
+import { SchemaMapper } from "@/components/SchemaMapper";
+import { ValidationSummary } from "@/components/ValidationSummary";
 import { Task, AnalysisResult } from "@/app/api/analyze/route";
+import {
+  ProposedMapping,
+  ValidationReport,
+  extractRawStatusValues,
+  reshapeWithMapping,
+} from "@/lib/schema";
 import {
   Loader2,
   RotateCcw,
@@ -19,8 +27,22 @@ import {
 } from "lucide-react";
 
 type View = "analyst" | "operator";
+type Stage = "upload" | "mapping" | "validation" | "dashboard";
 
 export default function Home() {
+  // --- Stage & flow state ------------------------------------------------
+  const [stage, setStage] = useState<Stage>("upload");
+  const [rawData, setRawData] = useState<Record<string, string>[]>([]);
+  const [rawHeaders, setRawHeaders] = useState<string[]>([]);
+  const [proposedMapping, setProposedMapping] = useState<ProposedMapping | null>(
+    null
+  );
+  const [mappingLoading, setMappingLoading] = useState(false);
+  const [mappingError, setMappingError] = useState<string | null>(null);
+  const [validationReport, setValidationReport] =
+    useState<ValidationReport | null>(null);
+
+  // --- Dashboard state ---------------------------------------------------
   const [tasks, setTasks] = useState<Task[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,18 +50,87 @@ export default function Home() {
   const [view, setView] = useState<View>("analyst");
   const [pinnedTaskId, setPinnedTaskId] = useState<string | null>(null);
 
-  const handleData = async (newTasks: Task[]) => {
+  // ----------------------------------------------------------------------
+  // Stage transitions
+  // ----------------------------------------------------------------------
+
+  /** Fallback path: CSV is canonical — go straight to the dashboard. */
+  const handleCanonicalData = (newTasks: Task[]) => {
     setTasks(newTasks);
+    setStage("dashboard");
+    runAnalysis(newTasks);
+  };
+
+  /** Mapping path: kick off the AI schema-mapping call. */
+  const handleRawData = async (
+    data: Record<string, string>[],
+    headers: string[]
+  ) => {
+    setRawData(data);
+    setRawHeaders(headers);
+    setProposedMapping(null);
+    setMappingError(null);
+    setStage("mapping");
+    setMappingLoading(true);
+
+    try {
+      const res = await fetch("/api/map-schema", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          headers,
+          sampleRows: data.slice(0, 5),
+        }),
+      });
+      if (!res.ok) throw new Error(`Mapping API ${res.status}`);
+      const mapping = (await res.json()) as ProposedMapping;
+      setProposedMapping(mapping);
+    } catch (err) {
+      setMappingError(
+        err instanceof Error ? err.message : "AI mapping failed"
+      );
+    } finally {
+      setMappingLoading(false);
+    }
+  };
+
+  /** User confirmed (or manually set) the mapping — reshape + validate. */
+  const handleConfirmMapping = (mapping: ProposedMapping) => {
+    const { tasks: reshaped, report } = reshapeWithMapping(rawData, mapping);
+    setTasks(reshaped);
+    setValidationReport(report);
+
+    if (report.issues.length === 0) {
+      // Clean upload — skip the validation screen.
+      setStage("dashboard");
+      runAnalysis(reshaped);
+    } else {
+      setStage("validation");
+    }
+  };
+
+  /** User accepted the validation report — enter dashboard. */
+  const handleContinueFromValidation = () => {
+    setStage("dashboard");
+    runAnalysis(tasks);
+  };
+
+  /** User wants to revisit mappings (from validation screen). */
+  const handleRemap = () => {
+    setValidationReport(null);
+    setStage("mapping");
+  };
+
+  /** Fire the AI insights analysis on the validated canonical tasks. */
+  const runAnalysis = async (forTasks: Task[]) => {
     setAnalysis(null);
     setError(null);
     setLoading(true);
-    setPinnedTaskId(null);
-
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tasks: newTasks }),
+        body: JSON.stringify({ tasks: forTasks }),
       });
       if (!res.ok) throw new Error(`API error ${res.status}`);
       const data: AnalysisResult = await res.json();
@@ -52,16 +143,20 @@ export default function Home() {
   };
 
   const reset = () => {
+    setStage("upload");
+    setRawData([]);
+    setRawHeaders([]);
+    setProposedMapping(null);
+    setMappingError(null);
+    setValidationReport(null);
     setTasks([]);
     setAnalysis(null);
     setError(null);
     setPinnedTaskId(null);
   };
 
-  /** Jump to the task table and pin the clicked task ID */
   const handleTaskClick = (id: string) => {
     setPinnedTaskId(id);
-    // Small delay so the pin state renders before scrolling
     setTimeout(() => {
       document
         .getElementById("task-table")
@@ -69,7 +164,12 @@ export default function Home() {
     }, 50);
   };
 
-  if (tasks.length === 0) {
+  // ----------------------------------------------------------------------
+  // Render — one screen per stage
+  // ----------------------------------------------------------------------
+
+  // === Upload screen ===
+  if (stage === "upload") {
     return (
       <main className="min-h-screen bg-page">
         <div className="max-w-3xl mx-auto py-16 px-4">
@@ -86,16 +186,60 @@ export default function Home() {
               instantly.
             </p>
           </header>
-          <CSVUpload onData={handleData} />
+          <CSVUpload
+            onCanonicalData={handleCanonicalData}
+            onRawData={handleRawData}
+          />
         </div>
       </main>
     );
   }
 
+  // === Mapping screen ===
+  if (stage === "mapping") {
+    if (mappingLoading) {
+      return (
+        <main className="min-h-screen bg-page flex items-center justify-center">
+          <div className="flex items-center gap-3 text-muted">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">
+              Detecting your schema with Claude…
+            </span>
+          </div>
+        </main>
+      );
+    }
+
+    const statusCol = proposedMapping?.column_map?.status ?? null;
+    const rawStatusValues = extractRawStatusValues(rawData, statusCol);
+
+    return (
+      <SchemaMapper
+        rawHeaders={rawHeaders}
+        rawStatusValues={rawStatusValues}
+        proposedMapping={proposedMapping}
+        mappingError={mappingError}
+        onConfirm={handleConfirmMapping}
+        onCancel={reset}
+      />
+    );
+  }
+
+  // === Validation screen ===
+  if (stage === "validation" && validationReport) {
+    return (
+      <ValidationSummary
+        report={validationReport}
+        onContinue={handleContinueFromValidation}
+        onRemap={handleRemap}
+      />
+    );
+  }
+
+  // === Dashboard ===
   return (
     <main className="min-h-screen bg-page">
       <div className="max-w-6xl mx-auto px-4 py-7">
-
         {/* Header */}
         <div className="flex items-start justify-between mb-5 flex-wrap gap-4">
           <div>
@@ -106,11 +250,12 @@ export default function Home() {
             <h1 className="text-xl font-semibold text-[#d0d8ec]">
               Ops Intelligence Dashboard
             </h1>
-            <p className="text-muted text-xs mt-0.5">{tasks.length} tasks loaded</p>
+            <p className="text-muted text-xs mt-0.5">
+              {tasks.length} tasks loaded
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* View toggle */}
             <div className="flex items-center gap-0.5 bg-card border border-card-border rounded-xl p-1">
               <button
                 onClick={() => setView("analyst")}
@@ -146,7 +291,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* "So what?" banner — shared across both views */}
+        {/* "So what?" banner */}
         {analysis && !loading && analysis.topPriority && (
           <div className="mb-5 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#13161f] border border-[#1c2235]">
             <ArrowRight className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
@@ -159,7 +304,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Analyst View */}
         {view === "analyst" && (
           <AnalystView
             tasks={tasks}
@@ -170,13 +314,10 @@ export default function Home() {
           />
         )}
 
-        {/* Operator View */}
         {view === "operator" && (
           <div className="space-y-6">
-
             <MetricsGrid tasks={tasks} />
 
-            {/* AI Insights — gracefully hidden on error */}
             {(loading || analysis) && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -204,12 +345,12 @@ export default function Home() {
               </div>
             )}
 
-            {/* Error state — soft notice, charts still render below */}
             {error && !loading && (
               <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-card border border-card-border">
                 <span className="w-1.5 h-1.5 rounded-full bg-muted mt-1.5 flex-shrink-0" />
                 <p className="text-muted text-sm">
-                  AI insights unavailable — charts and data below are still accurate.
+                  AI insights unavailable — charts and data below are still
+                  accurate.
                 </p>
               </div>
             )}
@@ -227,7 +368,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Task table also rendered in Analyst view (below the fold) so pin/scroll works */}
         {view === "analyst" && tasks.length > 0 && (
           <div className="mt-6">
             <TaskTable
@@ -237,7 +377,6 @@ export default function Home() {
             />
           </div>
         )}
-
       </div>
     </main>
   );

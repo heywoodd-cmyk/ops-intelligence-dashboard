@@ -1,35 +1,35 @@
 task_id,task_name,assignee,status,priority,created_date,due_date,completed_date,department,category,estimated_hours,actual_hours
 T-001,Onboarding portal redesign,Maya Chen,In Progress,High,2026-03-10,2026-04-01,,Product,Design,40,52
-T-002,Q1 vendor contract renewals,James Liu,Overdue,High,2026-03-01,2026-03-31,,Operations,Procurement,16,0
+T-002,Q1 vendor contract renewals,James Liu,Not Started,High,2026-03-01,2026-03-31,,Operations,Procurement,16,0
 T-003,Automate weekly reporting pipeline,Priya Nair,Done,Medium,2026-03-05,2026-03-28,2026-03-27,Engineering,Automation,24,22
 T-004,Security audit - access controls,Devon Park,Blocked,Critical,2026-02-20,2026-03-15,,Security,Compliance,32,8
-T-005,Hire senior data analyst,James Liu,Overdue,High,2026-02-15,2026-03-20,,Operations,Hiring,20,6
+T-005,Hire senior data analyst,James Liu,In Progress,High,2026-02-15,2026-03-20,,Operations,Hiring,20,6
 T-006,Set up customer support ticketing,Maya Chen,In Progress,Medium,2026-03-15,2026-04-15,,Product,Tooling,30,18
 T-007,Migrate legacy DB to Postgres,Priya Nair,In Progress,High,2026-03-01,2026-04-30,,Engineering,Infrastructure,80,35
 T-008,Update employee handbook,Jordan West,Done,Low,2026-03-01,2026-03-31,2026-03-25,HR,Documentation,8,7
 T-009,Implement SSO across internal tools,Devon Park,Blocked,Critical,2026-02-25,2026-03-20,,Security,Compliance,40,12
-T-010,Vendor onboarding checklist,James Liu,Overdue,Medium,2026-03-01,2026-04-01,,Operations,Procurement,10,2
+T-010,Vendor onboarding checklist,James Liu,In Progress,Medium,2026-03-01,2026-04-01,,Operations,Procurement,10,2
 T-011,Build analytics dashboard v2,Maya Chen,In Progress,High,2026-03-20,2026-05-01,,Product,Analytics,60,25
 T-012,Performance review cycle setup,Jordan West,Done,Medium,2026-03-10,2026-03-30,2026-03-29,HR,People Ops,12,11
 T-013,API rate limiting implementation,Priya Nair,Done,High,2026-03-10,2026-04-05,2026-04-02,Engineering,Security,20,19
-T-014,Negotiate SaaS renewals (Figma, Notion),James Liu,Overdue,High,2026-03-05,2026-04-01,,Operations,Procurement,14,3
+T-014,"Negotiate SaaS renewals (Figma, Notion)",James Liu,In Progress,High,2026-03-05,2026-04-01,,Operations,Procurement,14,3
 T-015,Incident response runbook,Devon Park,In Progress,Critical,2026-03-01,2026-04-10,,Security,Compliance,24,10
 T-016,Q2 OKR planning workshop,Jordan West,Done,Medium,2026-03-20,2026-04-05,2026-04-04,HR,Strategy,16,16
 T-017,Set up CI/CD for mobile app,Priya Nair,In Progress,High,2026-03-25,2026-04-25,,Engineering,DevOps,36,14
-T-018,Customer churn analysis,Maya Chen,Overdue,High,2026-03-01,2026-03-25,,Product,Analytics,20,8
+T-018,Customer churn analysis,Maya Chen,In Progress,High,2026-03-01,2026-03-25,,Product,Analytics,20,8
 T-019,Procurement policy documentation,James Liu,Not Started,Low,2026-04-01,2026-05-15,,Operations,Documentation,8,0
 T-020,GDPR data retention audit,Devon Park,Blocked,Critical,2026-03-10,2026-04-01,,Security,Compliance,40,5
 T-021,Slack integration for alerts,Priya Nair,Done,Medium,2026-03-15,2026-04-10,2026-04-08,Engineering,Automation,16,15
 T-022,Headcount planning model,Jordan West,In Progress,Medium,2026-04-01,2026-04-30,,HR,Strategy,20,6
 T-023,Feature flag system rollout,Priya Nair,In Progress,Medium,2026-04-05,2026-05-10,,Engineering,Infrastructure,28,8
 T-024,RFP for new HR platform,James Liu,Not Started,Medium,2026-04-10,2026-05-30,,Operations,Procurement,20,0
-T-025,Accessibility audit (WCAG 2.1),Maya Chen,Overdue,High,2026-03-10,2026-04-01,,Product,Compliance,24,5
+T-025,Accessibility audit (WCAG 2.1),Maya Chen,In Progress,High,2026-03-10,2026-04-01,,Product,Compliance,24,5
 T-026,Zero-trust network architecture plan,Devon Park,In Progress,Critical,2026-03-20,2026-05-01,,Security,Infrastructure,48,15
 T-027,Benefits renewal negotiation,Jordan West,Done,High,2026-03-15,2026-04-15,2026-04-12,HR,Procurement,20,18
 T-028,Data warehouse schema redesign,Priya Nair,Blocked,High,2026-03-20,2026-04-20,,Engineering,Infrastructure,56,10
 T-029,Mobile push notification system,Maya Chen,Not Started,Medium,2026-04-15,2026-05-30,,Product,Engineering,32,0
 T-030,Ops team cross-training program,Jordan West,In Progress,Low,2026-04-01,2026-05-15,,HR,Training,16,4
-T-031,Cloud cost optimization review,Priya Nair,Overdue,High,2026-03-05,2026-03-31,,Engineering,Infrastructure,24,16
+T-031,Cloud cost optimization review,Priya Nair,In Progress,High,2026-03-05,2026-03-31,,Engineering,Infrastructure,24,16
 T-032,Third-party risk assessment,Devon Park,Not Started,High,2026-04-20,2026-06-01,,Security,Compliance,36,0
 T-033,Product roadmap Q3 draft,Maya Chen,In Progress,High,2026-04-10,2026-04-30,,Product,Strategy,20,8
 T-034,Offboarding workflow automation,Jordan West,Not Started,Medium,2026-04-15,2026-05-31,,HR,Automation,14,0
