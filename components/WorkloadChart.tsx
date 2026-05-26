@@ -20,31 +20,22 @@ const STATUS_COLORS: Record<string, string> = {
   Done: "#6ee7b7",
   "In Progress": "#93c5fd",
   Blocked: "#fca5a5",
-  Overdue: "#fcd34d",
   "Not Started": "#374151",
 };
 
-const STATUSES = ["Done", "In Progress", "Blocked", "Overdue", "Not Started"];
+// Stacks show RAW status only — Overdue is a flag, not a status.
+// (Per-person overdue counts surface in the AI insights and Overdue filter.)
+const STATUSES = ["Done", "In Progress", "Blocked", "Not Started"];
 
 export function WorkloadChart({ tasks }: WorkloadChartProps) {
-  const today = new Date().toISOString().split("T")[0];
   const assignees = [...new Set(tasks.map((t) => t.assignee))].sort();
 
   const data = assignees.map((name) => {
     const at = tasks.filter((t) => t.assignee === name);
     const row: Record<string, string | number> = { name: name.split(" ")[0] };
     STATUSES.forEach((s) => {
-      if (s === "Overdue") {
-        row[s] = at.filter(
-          (t) =>
-            t.due_date &&
-            t.due_date < today &&
-            t.status !== "Done" &&
-            t.status !== "Completed"
-        ).length;
-      } else {
-        row[s] = at.filter((t) => t.status === s).length;
-      }
+      const target = s === "Done" ? ["Done", "Completed"] : [s];
+      row[s] = at.filter((t) => target.includes(t.status)).length;
     });
     return row;
   });

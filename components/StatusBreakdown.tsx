@@ -11,27 +11,16 @@ const COLORS: Record<string, string> = {
   Done: "#6ee7b7",
   "In Progress": "#93c5fd",
   Blocked: "#fca5a5",
-  Overdue: "#fcd34d",
   "Not Started": "#374151",
+  Overdue: "#fcd34d", // legacy raw-status fallback (non-canonical data)
 };
 
 export function StatusBreakdown({ tasks }: StatusBreakdownProps) {
-  const today = new Date().toISOString().split("T")[0];
-
-  const normalize = (t: Task): string => {
-    if (
-      t.due_date &&
-      t.due_date < today &&
-      t.status !== "Done" &&
-      t.status !== "Completed"
-    )
-      return "Overdue";
-    return t.status;
-  };
-
+  // Status is shown raw — Overdue is a flag (see KPI cards), not a status.
+  // Count by t.status only; never re-derive.
   const counts: Record<string, number> = {};
   tasks.forEach((t) => {
-    const s = normalize(t);
+    const s = t.status === "Completed" ? "Done" : t.status;
     counts[s] = (counts[s] || 0) + 1;
   });
 

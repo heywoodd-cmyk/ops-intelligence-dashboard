@@ -14,7 +14,7 @@ const STATUS_STYLES: Record<string, string> = {
   Done: "bg-emerald-950/40 text-emerald-300 border-emerald-900/40",
   "In Progress": "bg-blue-950/40 text-blue-300 border-blue-900/40",
   Blocked: "bg-red-950/40 text-red-300 border-red-900/40",
-  Overdue: "bg-amber-950/40 text-amber-300 border-amber-900/40",
+  Overdue: "bg-amber-950/40 text-amber-300 border-amber-900/40", // legacy raw value
   "Not Started": "bg-[#161b2a] text-[#6b778f] border-[#1c2235]",
 };
 
@@ -29,15 +29,23 @@ export function TaskTable({ tasks, pinnedTaskId, onClearPin }: TaskTableProps) {
   const today = new Date().toISOString().split("T")[0];
   const [filter, setFilter] = useState<string>("All");
 
-  const getDisplayStatus = (t: Task): string => {
-    if (
-      t.due_date &&
-      t.due_date < today &&
-      t.status !== "Done" &&
-      t.status !== "Completed"
-    )
-      return "Overdue";
-    return t.status;
+  // Overdue is a FLAG (independent of status), not a status value.
+  // Matches the definition used by MetricsGrid and route.ts computeFacts.
+  const isOverdueFlag = (t: Task): boolean =>
+    !!t.due_date &&
+    t.due_date < today &&
+    t.status !== "Done" &&
+    t.status !== "Completed";
+
+  // Each filter has its own predicate — Blocked and Overdue are independent.
+  // A task that is both Blocked and overdue matches BOTH filters.
+  const FILTER_PREDICATES: Record<string, (t: Task) => boolean> = {
+    All: () => true,
+    Overdue: isOverdueFlag,
+    Blocked: (t) => t.status === "Blocked",
+    "In Progress": (t) => t.status === "In Progress",
+    "Not Started": (t) => t.status === "Not Started",
+    Done: (t) => t.status === "Done" || t.status === "Completed",
   };
 
   const filters = [
@@ -49,22 +57,22 @@ export function TaskTable({ tasks, pinnedTaskId, onClearPin }: TaskTableProps) {
     "Done",
   ];
 
-  // Pinned task overrides the status filter
+  // Pinned task overrides the status filter.
   const filtered = pinnedTaskId
     ? tasks.filter((t) => t.task_id === pinnedTaskId)
-    : filter === "All"
-      ? tasks
-      : tasks.filter((t) => getDisplayStatus(t) === filter);
+    : tasks.filter(FILTER_PREDICATES[filter] || (() => true));
 
   return (
-    <div id="task-table" className="rounded-xl border border-card-border bg-card overflow-hidden">
+    <div
+      id="task-table"
+      className="rounded-xl border border-card-border bg-card overflow-hidden"
+    >
       <div className="p-4 border-b border-card-border flex items-center justify-between flex-wrap gap-3">
         <h3 className="text-[10px] font-semibold text-muted uppercase tracking-widest">
           All Tasks
         </h3>
 
         <div className="flex gap-1.5 flex-wrap items-center">
-          {/* Pinned task chip */}
           {pinnedTaskId && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-950/60 border border-violet-800/50 text-violet-300 text-xs font-mono">
               {pinnedTaskId}
@@ -78,7 +86,6 @@ export function TaskTable({ tasks, pinnedTaskId, onClearPin }: TaskTableProps) {
             </span>
           )}
 
-          {/* Status filters — hidden when pinned */}
           {!pinnedTaskId &&
             filters.map((f) => (
               <button
@@ -120,16 +127,18 @@ export function TaskTable({ tasks, pinnedTaskId, onClearPin }: TaskTableProps) {
           </thead>
           <tbody>
             {filtered.map((t) => {
-              const displayStatus = getDisplayStatus(t);
-              const isOverdue = displayStatus === "Overdue";
+              const overdue = isOverdueFlag(t);
               const isPinned = t.task_id === pinnedTaskId;
+              // Show "Overdue" flag pill EXCEPT when the raw status is literally
+              // "Overdue" (avoid duplicate label for legacy/non-canonical data).
+              const showOverduePill = overdue && t.status !== "Overdue";
               return (
                 <tr
                   key={t.task_id}
                   className={`border-b border-[#1c2235]/60 hover:bg-[#161b2a] transition-colors ${
                     isPinned
                       ? "bg-violet-950/10 ring-1 ring-inset ring-violet-900/30"
-                      : isOverdue
+                      : overdue
                         ? "bg-amber-950/5"
                         : ""
                   }`}
@@ -142,11 +151,18 @@ export function TaskTable({ tasks, pinnedTaskId, onClearPin }: TaskTableProps) {
                   </td>
                   <td className="px-4 py-3 text-[#8b96b0]">{t.assignee}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-md border text-xs font-medium ${STATUS_STYLES[displayStatus] || STATUS_STYLES["Not Started"]}`}
-                    >
-                      {displayStatus}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-md border text-xs font-medium ${STATUS_STYLES[t.status] || STATUS_STYLES["Not Started"]}`}
+                      >
+                        {t.status}
+                      </span>
+                      {showOverduePill && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[10px] font-medium bg-amber-950/40 text-amber-300 border-amber-900/40">
+                          Overdue
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -156,7 +172,7 @@ export function TaskTable({ tasks, pinnedTaskId, onClearPin }: TaskTableProps) {
                     </span>
                   </td>
                   <td
-                    className={`px-4 py-3 text-xs tabular-nums ${isOverdue ? "text-amber-300 font-medium" : "text-muted"}`}
+                    className={`px-4 py-3 text-xs tabular-nums ${overdue ? "text-amber-300 font-medium" : "text-muted"}`}
                   >
                     {t.due_date || "—"}
                   </td>
