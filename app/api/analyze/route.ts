@@ -30,18 +30,37 @@ export interface AnalysisResult {
   riskLevel: "low" | "medium" | "high" | "critical";
 }
 
-function buildPrompt(tasks: Task[]): string {
-  const today = new Date().toISOString().split("T")[0];
+// ---------------------------------------------------------------------------
+// Pre-compute all key counts in TypeScript BEFORE calling Claude.
+// These become ground-truth facts injected into the prompt so the model
+// never re-derives counts from the raw task list.
+// ---------------------------------------------------------------------------
 
-  const overdue = tasks.filter(
-    (t) =>
-      t.due_date &&
-      t.due_date < today &&
-      t.status !== "Done" &&
-      t.status !== "Completed"
-  );
+interface PersonFacts {
+  name: string;
+  total: number;
+  active: number;   // not done/completed
+  overdue: number;  // past due date AND not done — same definition as global
+  blocked: number;  // status === "Blocked"
+}
 
-  const blocked = tasks.filter((t) => t.status === "Blocked");
+interface Facts {
+  today: string;
+  total: number;
+  done: number;
+  inProgress: number;   // status === "In Progress" (may overlap with overdue)
+  overdue: number;      // past due date AND not done/completed
+  blocked: number;      // status === "Blocked"
+  criticalOpen: number; // priority === "Critical" AND not done/completed
+  overdueIds: string[];
+  blockedIds: string[];
+  perPerson: PersonFacts[];
+}
+
+function computeFacts(tasks: Task[], today: string): Facts {
+  const isDone    = (t: Task) => t.status === "Done" || t.status === "Completed";
+  const isOverdue = (t: Task) =>
+    !!t.due_date && t.due_date < today && !isDone(t);
 
   const byAssignee: Record<string, Task[]> = {};
   tasks.forEach((t) => {
@@ -49,31 +68,66 @@ function buildPrompt(tasks: Task[]): string {
     byAssignee[t.assignee].push(t);
   });
 
-  const workloadSummary = Object.entries(byAssignee)
-    .map(([name, ts]) => {
-      const active = ts.filter(
-        (t) => t.status !== "Done" && t.status !== "Completed"
-      );
-      return `${name}: ${ts.length} total, ${active.length} active, ${ts.filter((t) => t.status === "Blocked").length} blocked`;
-    })
+  return {
+    today,
+    total:        tasks.length,
+    done:         tasks.filter(isDone).length,
+    inProgress:   tasks.filter((t) => t.status === "In Progress").length,
+    overdue:      tasks.filter(isOverdue).length,
+    blocked:      tasks.filter((t) => t.status === "Blocked").length,
+    criticalOpen: tasks.filter((t) => t.priority === "Critical" && !isDone(t)).length,
+    overdueIds:   tasks.filter(isOverdue).map((t) => t.task_id),
+    blockedIds:   tasks.filter((t) => t.status === "Blocked").map((t) => t.task_id),
+    perPerson: Object.entries(byAssignee).map(([name, ts]) => ({
+      name,
+      total:   ts.length,
+      active:  ts.filter((t) => !isDone(t)).length,
+      overdue: ts.filter(isOverdue).length,
+      blocked: ts.filter((t) => t.status === "Blocked").length,
+    })),
+  };
+}
+
+function buildPrompt(tasks: Task[]): string {
+  const today = new Date().toISOString().split("T")[0];
+  const f = computeFacts(tasks, today);
+
+  // Format the per-person table for the prompt
+  const personTable = f.perPerson
+    .map(
+      (p) =>
+        `  ${p.name}: ${p.total} total | ${p.active} active | ${p.overdue} overdue | ${p.blocked} blocked`
+    )
     .join("\n");
 
   const taskList = tasks
     .map(
       (t) =>
-        `[${t.task_id}] "${t.task_name}" | ${t.assignee} | ${t.status} | ${t.priority} priority | due ${t.due_date || "N/A"} | dept: ${t.department} | ${t.estimated_hours}h est / ${t.actual_hours}h actual`
+        `[${t.task_id}] "${t.task_name}" | ${t.assignee} | ${t.status} | ${t.priority} priority | due ${t.due_date || "N/A"} | dept: ${t.department}`
     )
     .join("\n");
 
-  return `You are an operations analyst. Today is ${today}.
+  return `You are an operations analyst. Today is ${f.today}.
 
-DATA:
-${workloadSummary}
+═══════════════════════════════════════════════════
+GROUND-TRUTH COUNTS — computed from the data in code.
+Use these exact integers verbatim. Never recount from the task list.
+═══════════════════════════════════════════════════
+  Total tasks   : ${f.total}
+  Completed     : ${f.done}
+  In progress   : ${f.inProgress}  (by status; may overlap with overdue)
+  Overdue       : ${f.overdue}  (past due date, not done — any status)
+  Blocked       : ${f.blocked}  (status = Blocked; distinct from overdue)
+  Critical open : ${f.criticalOpen}  (priority = Critical, not done)
 
-OVERDUE (${overdue.length}): ${overdue.map((t) => t.task_id).join(", ")}
-BLOCKED (${blocked.length}): ${blocked.map((t) => t.task_id).join(", ")}
+Per person:
+${personTable}
 
-TASKS:
+Overdue task IDs  : ${f.overdueIds.join(", ") || "none"}
+Blocked task IDs  : ${f.blockedIds.join(", ") || "none"}
+═══════════════════════════════════════════════════
+
+TASK LIST (for context — do not recount; use GROUND-TRUTH COUNTS above):
 ${taskList}
 
 Respond ONLY with valid JSON matching this schema exactly:
@@ -90,23 +144,30 @@ Respond ONLY with valid JSON matching this schema exactly:
 STRICT RULES — no exceptions:
 1. Every string in every array: ONE sentence, MAX 20 words.
 2. Start each finding with the number or fact. Example: "Devon has 4 blocked tasks, all in Security."
-3. Include specific task IDs (e.g. T-004) wherever relevant — especially in topRecommendations.
+3. Include specific task IDs wherever relevant — especially in topRecommendations.
 4. Each array must have EXACTLY 3 items.
 5. topPriority: one sentence, max 15 words, name the specific person or task.
-6. BANNED WORDS — do not use any of these: cascading, critically, overloaded, bottleneck dependencies, throughput, systemic, escalation, bandwidth, capacity constraints, dependency chains, operational risk, blocker dependencies, compounding.
+6. BANNED WORDS: cascading, critically, overloaded, throughput, systemic, escalation, bandwidth, capacity constraints, dependency chains, operational risk, compounding.
 
-GOOD examples (write like this):
-✓ topPriority: "Unblock Devon's 4 Security tasks — they're all Critical and overdue."
-✓ finding: "Devon has 4 of 5 active tasks blocked, all Critical priority."
-✓ finding: "James has 4 overdue tasks, all in Procurement with no progress logged."
-✓ recommendation: "Check in with Devon on T-004 and T-009 this week — both are Critical and blocked."
+COUNT CONSISTENCY RULES:
+7. Every number you write must come from GROUND-TRUTH COUNTS above. Do not derive counts from the task list.
+8. If a count appears in more than one panel, use the identical integer and identical phrasing each time.
+9. Never use vague language ("several", "multiple", "many") for any count that has an exact number in the table.
+10. Overdue (${f.overdue}) and Blocked (${f.blocked}) are separate counts — do not conflate them. A task can be both, but the totals are tracked independently.
+11. When describing a person, use their exact per-person row from the table (e.g. "James has 4 overdue tasks" if James.overdue = 4 — not "James has several").
 
-BAD examples (never write like this):
-✗ "Devon Park is critically overloaded with cascading security dependencies impacting throughput."
-✗ "The procurement pipeline faces systemic bottlenecks requiring immediate escalation."
-✗ "Operational bandwidth constraints are creating compounding delivery risks."
+GOOD examples:
+✓ topPriority: "Unblock Devon's 4 blocked Security tasks — all are Critical priority."
+✓ finding: "Devon has 4 of 7 active tasks blocked, all Critical."
+✓ finding: "James has 4 overdue tasks, all in Procurement."
+✓ recommendation: "Check in with Devon on T-004 and T-009 — both Critical and blocked."
 
-riskLevel: use "critical" if there are blocked Critical-priority tasks that are also overdue.`;
+BAD examples:
+✗ "Devon is overloaded with cascading security dependencies."
+✗ "Several tasks are overdue across multiple teams."
+✗ "The procurement pipeline faces systemic issues." (vague — use the number)
+
+riskLevel: "critical" if any blocked task is also Critical priority and overdue.`;
 }
 
 export async function POST(req: NextRequest) {
