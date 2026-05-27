@@ -64,6 +64,9 @@ export function WorkloadChart({ dataset }: WorkloadChartProps) {
 
   if (groups.length === 0) return null;
 
+  // Tight layout up to 6 bars; rotate labels at 7+ to avoid clipping.
+  const labelsRotated = groups.length > 6;
+
   const data = groups.map((name) => {
     const theirTasks = dataset.tasks.filter(
       (t) => getGroupKey(t) === name
@@ -90,10 +93,18 @@ export function WorkloadChart({ dataset }: WorkloadChartProps) {
         )}
       </div>
       <div className="bg-card border border-card-border rounded-md p-6">
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer
+          width="100%"
+          height={labelsRotated ? 280 : 240}
+        >
           <BarChart
             data={data}
-            margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
+            margin={{
+              top: 8,
+              right: 8,
+              left: -20,
+              bottom: labelsRotated ? 30 : 0,
+            }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#1f1f23" />
             <XAxis
@@ -101,6 +112,10 @@ export function WorkloadChart({ dataset }: WorkloadChartProps) {
               tick={{ fill: "#71717a", fontSize: 11 }}
               axisLine={{ stroke: "#1f1f23" }}
               tickLine={false}
+              interval={0}
+              angle={labelsRotated ? -45 : 0}
+              textAnchor={labelsRotated ? "end" : "middle"}
+              height={labelsRotated ? 60 : 30}
             />
             <YAxis
               tick={{ fill: "#71717a", fontSize: 11 }}

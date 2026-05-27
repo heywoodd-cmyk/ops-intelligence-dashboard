@@ -6,7 +6,11 @@ import { Hero } from "@/components/Hero";
 import { KpiTiles } from "@/components/KpiTiles";
 import { AttentionList } from "@/components/AttentionList";
 import { WorkloadChart } from "@/components/WorkloadChart";
-import { TaskTable } from "@/components/TaskTable";
+import {
+  TaskTable,
+  EMPTY_FILTERS,
+  type TaskTableFilters,
+} from "@/components/TaskTable";
 import { DataQualityBadge } from "@/components/DataQualityBadge";
 import type { NormalizedDataset } from "@/lib/schema";
 
@@ -19,22 +23,49 @@ function formatDate(d: Date): string {
   });
 }
 
+/** Smooth scroll to the task table with a small offset for visual breathing room. */
+function scrollToTable() {
+  const el = document.getElementById("task-table");
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const targetY = window.scrollY + rect.top - 24;
+  window.scrollTo({ top: targetY, behavior: "smooth" });
+}
+
 export default function Home() {
   const [dataset, setDataset] = useState<NormalizedDataset | null>(null);
   const [pinnedTaskId, setPinnedTaskId] = useState<string | null>(null);
+  const [tableFilters, setTableFilters] =
+    useState<TaskTableFilters>(EMPTY_FILTERS);
+  const [tableOpen, setTableOpen] = useState(false);
 
+  /** Pin a task from the attention list; clear any filters; open + scroll. */
   const handleTaskClick = (id: string) => {
     setPinnedTaskId(id);
-    setTimeout(() => {
-      document
-        .getElementById("task-table")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    setTableFilters(EMPTY_FILTERS);
+    setTableOpen(true);
+    setTimeout(scrollToTable, 50);
   };
 
-  const reset = () => {
+  /** Hero secondary button — filter the table to a department or assignee. */
+  const handleViewTasks = (
+    field: "department" | "assignee",
+    value: string
+  ) => {
+    setPinnedTaskId(null);
+    setTableFilters({
+      ...EMPTY_FILTERS,
+      [field]: value,
+    });
+    setTableOpen(true);
+    setTimeout(scrollToTable, 80);
+  };
+
+  const handleNewUpload = () => {
     setDataset(null);
     setPinnedTaskId(null);
+    setTableFilters(EMPTY_FILTERS);
+    setTableOpen(false);
   };
 
   // ---- Empty / upload state -------------------------------------------
@@ -69,7 +100,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <DataQualityBadge dataset={dataset} />
             <button
-              onClick={reset}
+              onClick={handleNewUpload}
               className="text-xs text-muted hover:text-secondary px-3 py-1.5 rounded-md border border-card-border transition-colors"
             >
               New upload
@@ -77,7 +108,7 @@ export default function Home() {
           </div>
         </header>
 
-        <Hero dataset={dataset} />
+        <Hero dataset={dataset} onViewTasks={handleViewTasks} />
 
         <KpiTiles dataset={dataset} />
 
@@ -89,6 +120,10 @@ export default function Home() {
           dataset={dataset}
           pinnedTaskId={pinnedTaskId}
           onClearPin={() => setPinnedTaskId(null)}
+          open={tableOpen}
+          onOpenChange={setTableOpen}
+          filters={tableFilters}
+          onFiltersChange={setTableFilters}
         />
       </div>
     </main>

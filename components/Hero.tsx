@@ -5,15 +5,30 @@ import type { NormalizedDataset } from "@/lib/schema";
 
 interface HeroProps {
   dataset: NormalizedDataset;
+  /**
+   * Called when the secondary "View {…} tasks" button is clicked.
+   * Page-level handler scrolls to the table, opens it, and applies the
+   * filter. Unwired for status-driven and all-clear branches.
+   */
+  onViewTasks?: (
+    field: "department" | "assignee",
+    value: string
+  ) => void;
 }
 
-/**
- * Data-driven hero block. heroCopy() picks one of three branches based
- * on assignee data + overdue count. Buttons render but are not wired —
- * that's Day 2 work per spec. Click handlers are intentional no-ops.
- */
-export function Hero({ dataset }: HeroProps) {
-  const { headline, subline, buttons } = heroCopy(dataset);
+export function Hero({ dataset, onViewTasks }: HeroProps) {
+  const copy = heroCopy(dataset);
+  const { headline, subline, buttons, context } = copy;
+
+  const handleSecondary = (action: string) => {
+    if (action === "view-department" && context?.department) {
+      onViewTasks?.("department", context.department);
+    } else if (action === "view-assignee" && context?.assignee) {
+      onViewTasks?.("assignee", context.assignee);
+    }
+    // Other secondary actions (view-overdue, etc.) intentionally unwired
+    // for Phase 1.5 — that's Phase 3 / future work.
+  };
 
   return (
     <section className="py-12">
@@ -24,21 +39,28 @@ export function Hero({ dataset }: HeroProps) {
         {subline}
       </p>
       <div className="flex items-center gap-2 flex-wrap">
-        {buttons.map((b, i) => (
-          <button
-            key={b.action}
-            onClick={() => {
-              /* Day-2 wiring */
-            }}
-            className={
-              i === 0
-                ? "text-sm font-medium px-4 py-2 rounded-md bg-violet-600 hover:bg-violet-500 text-white transition-colors"
-                : "text-sm text-secondary px-4 py-2 rounded-md hover:bg-card-border transition-colors"
-            }
-          >
-            {b.label}
-          </button>
-        ))}
+        {buttons.map((b, i) => {
+          const isPrimary = i === 0;
+          return (
+            <button
+              key={b.action}
+              onClick={
+                isPrimary
+                  ? () => {
+                      /* Primary wired in Phase 3 (DraftActionModal) */
+                    }
+                  : () => handleSecondary(b.action)
+              }
+              className={
+                isPrimary
+                  ? "text-sm font-medium px-4 py-2 rounded-md bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                  : "text-sm text-secondary px-4 py-2 rounded-md hover:bg-card-border transition-colors"
+              }
+            >
+              {b.label}
+            </button>
+          );
+        })}
       </div>
     </section>
   );
