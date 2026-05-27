@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Bar,
   BarChart,
@@ -10,47 +11,68 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { NormalizedDataset } from "@/lib/schema";
+import type { NormalizedDataset, Task } from "@/lib/schema";
 
 interface WorkloadChartProps {
   dataset: NormalizedDataset;
 }
 
+type GroupBy = "Department" | "Assignee";
+
 // Palette per Friday-demo spec — tonal zinc with rose for Blocked.
-// Stack ordered bottom→top so Blocked sits at the eye-catching top.
 const STATUS_COLORS: Record<string, string> = {
-  Done: "#3f3f46",         // zinc-700
+  Done: "#3f3f46",          // zinc-700
   "Not Started": "#52525b", // zinc-600
   "In Progress": "#d4d4d8", // zinc-300
-  Blocked: "#f43f5e",      // rose-500
+  Blocked: "#f43f5e",       // rose-500
 };
 
 const STACK_ORDER = ["Done", "Not Started", "In Progress", "Blocked"];
 
 /**
- * Per-assignee stacked task counts. Hides itself entirely when the
- * dataset lacks an assignee column.
+ * Stacked task counts grouped by department (default) or assignee.
+ * Toggle is hidden when the dataset has no department column.
+ * The whole chart hides when neither grouping is available.
  */
 export function WorkloadChart({ dataset }: WorkloadChartProps) {
-  if (!dataset.hasAssignee) return null;
+  // Default to Department when available, else Assignee.
+  const initial: GroupBy = dataset.hasDepartment ? "Department" : "Assignee";
+  const [groupBy, setGroupBy] = useState<GroupBy>(initial);
 
-  // Group tasks by assignee. Tasks with null assignee (shouldn't happen
-  // when hasAssignee=true, but defensive) are excluded.
-  const assignees = Array.from(
+  // Hide the chart entirely when neither grouping has a source column.
+  if (!dataset.hasDepartment && !dataset.hasAssignee) return null;
+
+  // If the user is on Assignee but the dataset only has dept, force back
+  // to Department. (Won't happen on a single dataset, but harmless.)
+  const effectiveGroup: GroupBy =
+    groupBy === "Assignee" && !dataset.hasAssignee
+      ? "Department"
+      : groupBy === "Department" && !dataset.hasDepartment
+        ? "Assignee"
+        : groupBy;
+
+  const getGroupKey = (t: Task): string | null =>
+    effectiveGroup === "Department" ? t.department : t.assignee;
+
+  const groups = Array.from(
     new Set(
       dataset.tasks
-        .map((t) => t.assignee)
-        .filter((a): a is string => !!a)
+        .map(getGroupKey)
+        .filter((g): g is string => !!g)
     )
   ).sort();
 
-  if (assignees.length === 0) return null;
+  if (groups.length === 0) return null;
 
-  const data = assignees.map((name) => {
-    const theirTasks = dataset.tasks.filter((t) => t.assignee === name);
-    const row: Record<string, string | number> = {
-      name: name.split(/\s+/)[0],
-    };
+  const data = groups.map((name) => {
+    const theirTasks = dataset.tasks.filter(
+      (t) => getGroupKey(t) === name
+    );
+    // For Assignee mode, abbreviate to first name (chart space).
+    // For Department mode, keep the full name.
+    const label =
+      effectiveGroup === "Assignee" ? name.split(/\s+/)[0] : name;
+    const row: Record<string, string | number> = { name: label };
     for (const status of STACK_ORDER) {
       row[status] = theirTasks.filter((t) => t.status === status).length;
     }
@@ -59,9 +81,14 @@ export function WorkloadChart({ dataset }: WorkloadChartProps) {
 
   return (
     <section>
-      <p className="text-xs text-muted uppercase tracking-widest mb-4">
-        Workload by assignee
-      </p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-muted uppercase tracking-widest">
+          Workload by {effectiveGroup.toLowerCase()}
+        </p>
+        {dataset.hasDepartment && dataset.hasAssignee && (
+          <GroupByToggle value={effectiveGroup} onChange={setGroupBy} />
+        )}
+      </div>
       <div className="bg-card border border-card-border rounded-md p-6">
         <ResponsiveContainer width="100%" height={240}>
           <BarChart
@@ -107,5 +134,35 @@ export function WorkloadChart({ dataset }: WorkloadChartProps) {
         </ResponsiveContainer>
       </div>
     </section>
+  );
+}
+
+function GroupByToggle({
+  value,
+  onChange,
+}: {
+  value: GroupBy;
+  onChange: (g: GroupBy) => void;
+}) {
+  const options: GroupBy[] = ["Department", "Assignee"];
+  return (
+    <div className="inline-flex items-center bg-zinc-900 border border-card-border rounded-md p-0.5">
+      {options.map((opt) => {
+        const active = opt === value;
+        return (
+          <button
+            key={opt}
+            onClick={() => onChange(opt)}
+            className={`text-[11px] px-2.5 py-1 rounded transition-colors ${
+              active
+                ? "bg-zinc-800 text-primary"
+                : "text-muted hover:text-secondary"
+            }`}
+          >
+            {opt}
+          </button>
+        );
+      })}
+    </div>
   );
 }
