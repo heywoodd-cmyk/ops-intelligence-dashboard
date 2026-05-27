@@ -39,12 +39,18 @@ export function AttentionList({ dataset, onTaskClick }: AttentionListProps) {
     };
   });
 
+  // KPI tiles stagger 0/100/200ms with 300ms duration → last tile lands
+  // ≈500ms. Attention rows begin at 300ms (overlapping the tail of the
+  // KPI animation slightly) with 50ms steps.
+  const ROW_BASE_DELAY_MS = 300;
+  const ROW_STEP_MS = 50;
+
   return (
     <section>
       <p className="text-xs text-muted uppercase tracking-widest mb-4">
         What needs your attention
       </p>
-      <div className="bg-card border border-card-border rounded-md divide-y divide-card-border">
+      <div className="card-surface rounded-md divide-y divide-card-border">
         {rendered.map(({ row, showRose, task }, i) => (
           <RowContainer
             key={i}
@@ -53,6 +59,7 @@ export function AttentionList({ dataset, onTaskClick }: AttentionListProps) {
             showRose={showRose}
             dataset={dataset}
             onTaskClick={onTaskClick}
+            animationDelay={`${ROW_BASE_DELAY_MS + i * ROW_STEP_MS}ms`}
           />
         ))}
       </div>
@@ -66,16 +73,18 @@ function RowContainer({
   showRose,
   dataset,
   onTaskClick,
+  animationDelay,
 }: {
   row: AttentionRow;
   task: Task | null;
   showRose: boolean;
   dataset: NormalizedDataset;
   onTaskClick?: (id: string) => void;
+  animationDelay: string;
 }) {
   // Standup (synthesized) rows stay non-expandable — single line.
   if (row.synthesized) {
-    return <StandupRow row={row} />;
+    return <StandupRow row={row} animationDelay={animationDelay} />;
   }
 
   return (
@@ -85,13 +94,23 @@ function RowContainer({
       showRose={showRose}
       dataset={dataset}
       onTaskClick={onTaskClick}
+      animationDelay={animationDelay}
     />
   );
 }
 
-function StandupRow({ row }: { row: AttentionRow }) {
+function StandupRow({
+  row,
+  animationDelay,
+}: {
+  row: AttentionRow;
+  animationDelay: string;
+}) {
   return (
-    <div className="px-6 py-4 flex items-center justify-between gap-4">
+    <div
+      className="px-6 py-4 flex items-center justify-between gap-4 animate-fade-in-up"
+      style={{ animationDelay }}
+    >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <span className="w-1.5 h-1.5 rounded-full bg-zinc-700 flex-shrink-0" />
         <span className="text-sm text-primary truncate">{row.sentence}</span>
@@ -114,12 +133,14 @@ function ExpandableRow({
   showRose,
   dataset,
   onTaskClick,
+  animationDelay,
 }: {
   row: AttentionRow;
   task: Task | null;
   showRose: boolean;
   dataset: NormalizedDataset;
   onTaskClick?: (id: string) => void;
+  animationDelay: string;
 }) {
   const handleAction = (e: React.MouseEvent) => {
     // Don't toggle the <details> when clicking the action button.
@@ -133,7 +154,10 @@ function ExpandableRow({
     : null;
 
   return (
-    <details className="group [&_summary]:list-none [&_summary::-webkit-details-marker]:hidden">
+    <details
+      className="group animate-fade-in-up [&_summary]:list-none [&_summary::-webkit-details-marker]:hidden"
+      style={{ animationDelay }}
+    >
       <summary className="px-6 py-4 cursor-pointer flex items-center justify-between gap-4 hover:bg-zinc-900/40 transition-colors">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {showRose ? (

@@ -92,7 +92,7 @@ export function WorkloadChart({ dataset }: WorkloadChartProps) {
           <GroupByToggle value={effectiveGroup} onChange={setGroupBy} />
         )}
       </div>
-      <div className="bg-card border border-card-border rounded-md p-6">
+      <div className="card-surface rounded-md p-6">
         <ResponsiveContainer
           width="100%"
           height={labelsRotated ? 280 : 240}

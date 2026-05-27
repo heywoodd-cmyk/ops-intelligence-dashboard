@@ -96,7 +96,7 @@ export function TaskTable({
         onToggle={(e) =>
           onOpenChange((e.currentTarget as HTMLDetailsElement).open)
         }
-        className="bg-card border border-card-border rounded-md overflow-hidden"
+        className="card-surface rounded-md overflow-hidden"
       >
         <summary className="px-6 py-4 cursor-pointer list-none flex items-center justify-between text-sm text-secondary hover:text-primary transition-colors">
           <span className="flex items-center gap-3">

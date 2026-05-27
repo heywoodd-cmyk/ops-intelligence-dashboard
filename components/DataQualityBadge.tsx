@@ -25,13 +25,16 @@ export function DataQualityBadge({ dataset }: DataQualityBadgeProps) {
         className="text-xs text-muted hover:text-secondary px-3 py-1.5 rounded-md border border-card-border hover:border-card-border transition-colors flex items-center gap-2"
         aria-label="Data quality details"
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+        <span
+          className="w-1.5 h-1.5 rounded-full animate-pulse-soft"
+          style={{ backgroundColor: "#8b5cf6" }}
+        />
         Data quality
       </button>
 
       {/* Hover popover — pt-2 gap absorbs cursor movement */}
       <div className="absolute right-0 top-full pt-2 z-30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity">
-        <div className="w-80 p-5 bg-card border border-card-border rounded-md shadow-2xl space-y-4">
+        <div className="w-80 p-5 card-surface rounded-md shadow-2xl space-y-4">
           {mapped.length > 0 && (
             <Section
               label="Mapped"

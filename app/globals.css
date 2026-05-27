@@ -6,7 +6,7 @@
 /* ------------------------------------------------------------------ */
 
 :root {
-  --background: #0a0a0b;          /* warmer than pure black */
+  --background: #0c0c10;          /* near-black, very slight blue */
   --foreground: #fafafa;          /* zinc-50 — primary text  */
 }
 
@@ -17,7 +17,7 @@
   --font-mono: var(--font-geist-mono);
 
   /* Surfaces */
-  --color-page:        #0a0a0b;
+  --color-page:        #0c0c10;
   --color-card:        #131316;
   --color-card-border: #1f1f23;
 
@@ -27,16 +27,92 @@
   --color-text-muted:     #71717a;  /* zinc-500 */
 }
 
+/* Body: subtle violet glow in the upper-left, solid near-black base. */
 body {
-  background: var(--background);
+  background:
+    radial-gradient(ellipse at top left, rgba(139, 92, 246, 0.04), transparent 60%),
+    #0c0c10;
   color: var(--foreground);
+  min-height: 100vh;
 }
 
-/* Utility classes (not in Tailwind core — keep these explicit) */
-.bg-page          { background-color: #0a0a0b; }
+/* ------------------------------------------------------------------ */
+/* Card surface — used by Hero, KPI tiles, attention list,            */
+/* workload chart, task table, modal, and data quality popover.       */
+/* ------------------------------------------------------------------ */
+
+.card-surface {
+  background: linear-gradient(180deg, #18181c 0%, #131316 100%);
+  border: 1px solid #1f1f23;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Variant for clickable cards (attention rows). Hover bumps the inner
+   highlight. Transition is on the box-shadow only — colors stay put. */
+.card-surface-interactive {
+  background: linear-gradient(180deg, #18181c 0%, #131316 100%);
+  border: 1px solid #1f1f23;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: box-shadow 150ms ease-out;
+}
+.card-surface-interactive:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ------------------------------------------------------------------ */
+/* Utility classes                                                    */
+/* ------------------------------------------------------------------ */
+
+.bg-page          { background-color: #0c0c10; }
 .bg-card          { background-color: #131316; }
 .border-card-border { border-color: #1f1f23; }
 
 .text-primary    { color: #fafafa; }
 .text-secondary  { color: #a1a1aa; }
 .text-muted      { color: #71717a; }
+
+/* ------------------------------------------------------------------ */
+/* Motion — entrance fade + soft pulse                                */
+/* Inlined here rather than adding tailwindcss-animate as a dep.      */
+/* ------------------------------------------------------------------ */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1.0; }
+}
+
+/* `both` keeps the element invisible during animation-delay so the
+   stagger reads as planned, not as everything snapping in then fading. */
+.animate-fade-in-up {
+  animation: fade-in-up 300ms ease-out both;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Modal entrance (Phase 3 — defined here for proximity). */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-modal-in {
+  animation: modal-in 200ms ease-out both;
+}

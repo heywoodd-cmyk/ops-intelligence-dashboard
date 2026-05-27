@@ -71,7 +71,7 @@ export default function Home() {
   // ---- Empty / upload state -------------------------------------------
   if (!dataset) {
     return (
-      <main className="min-h-screen bg-page">
+      <main className="min-h-screen">
         <div className="max-w-2xl mx-auto px-4 py-20">
           <header className="text-center mb-14">
             <h1 className="text-4xl font-medium tracking-tight text-primary mb-3">
@@ -87,7 +87,7 @@ export default function Home() {
 
   // ---- Loaded dashboard -----------------------------------------------
   return (
-    <main className="min-h-screen bg-page">
+    <main className="min-h-screen">
       <div className="max-w-5xl mx-auto px-6 py-10 space-y-10">
         {/* Header */}
         <header className="flex items-start justify-between gap-4 flex-wrap">
