@@ -1,0 +1,26 @@
+ID,Title,Code Owner,State,P-Level,Deadline,Team,Created
+TASK-101,Refactor auth module,Sarah K,doing,P1,5/14/2026,Backend,2026-04-01
+TASK-102,Q2 sales pipeline review,Marcus T,wip,P2,14/05/2026,Sales,4/1/2026
+TASK-103,Investigate p99 latency spike,Alex R,stuck,P0,4/20/2026,SRE,2026-03-15
+TASK-104,Annual benefits enrollment,Lisa Y,Done,P3,"May 1, 2026",HR,2026-03-01
+TASK-105,Mobile app v3 launch prep,Sarah K,doing,P0,2026-05-30,Mobile,"March 5, 2026"
+TASK-106,GDPR documentation update,Marcus T,todo,P2,6/1/2026,Legal,2026-04-15
+TASK-107,Customer survey design,Alex R,blocked,P1,4/25/2026,Marketing,2026-03-20
+TASK-108,Q1 close audit prep,Lisa Y,✓,P3,"Apr 10, 2026",Finance,2026-02-15
+TASK-109,Database index optimization,Sarah K,wip,P1,2026-05-20,Backend,4/5/26
+TASK-110,Vendor evaluation matrix,Marcus T,pending,P2,7/1/2026,Procurement,2026-04-20
+TASK-111,Incident postmortem 47,Alex R,doing,P0,5/5/2026,SRE,2026-04-28
+TASK-112,Office relocation plan,Lisa Y,wip,P2,7/15/2026,Ops,2026-04-10
+TASK-113,API v3 migration,Sarah K,blocked,P1,4/15/2026,Backend,2026-03-10
+TASK-114,Q2 OKR draft,Marcus T,Done,P3,4/30/2026,Leadership,2026-03-25
+TASK-115,Security training rollout,Alex R,doing,P2,6/10/2026,Security,2026-04-05
+TASK-116,Customer NPS analysis,Lisa Y,wip,P2,5/25/2026,Product,2026-04-20
+TASK-117,Hiring committee setup,Sarah K,todo,P2,6/1/2026,HR,2026-04-25
+TASK-118,Cache layer redesign,Marcus T,stuck,P1,4/30/2026,Backend,2026-03-15
+TASK-119,Q3 roadmap workshop,Alex R,wip,P2,6/15/2026,Product,2026-04-12
+TASK-120,Penetration test followup,Lisa Y,blocked,P0,4/10/2026,Security,2026-03-01
+TASK-121,Marketing site redesign,Sarah K,doing,P3,6/30/2026,Marketing,2026-04-15
+TASK-122,Cost center reorg,Marcus T,pending,P3,7/30/2026,Finance,2026-05-01
+TASK-123,Slack workflow templates,Alex R,✓,P3,"Apr 25, 2026",Operations,2026-03-10
+TASK-124,Customer churn root cause,Lisa Y,wip,P1,5/20/2026,Product,2026-04-08
+TASK-125,Release notes automation,Sarah K,todo,P2,6/5/2026,Eng Ops,2026-04-20
