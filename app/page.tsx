@@ -12,7 +12,13 @@ import {
   type TaskTableFilters,
 } from "@/components/TaskTable";
 import { DataQualityBadge } from "@/components/DataQualityBadge";
-import type { NormalizedDataset } from "@/lib/schema";
+import {
+  DraftActionModal,
+  type ActionType,
+  type DraftActionContext,
+  type TaskContextItem,
+} from "@/components/DraftActionModal";
+import type { NormalizedDataset, Task } from "@/lib/schema";
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString("en-US", {
@@ -32,12 +38,65 @@ function scrollToTable() {
   window.scrollTo({ top: targetY, behavior: "smooth" });
 }
 
+const MS_PER_DAY = 86_400_000;
+
+/** Convert a canonical Task into the modal's wire-format context item. */
+function toContextItem(t: Task, today: Date): TaskContextItem {
+  const daysOverdue =
+    t.overdue && t.due_date
+      ? Math.max(
+          0,
+          Math.floor((today.getTime() - t.due_date.getTime()) / MS_PER_DAY)
+        )
+      : 0;
+  return {
+    task_id: t.task_id,
+    task_name: t.task_name,
+    status: t.status,
+    priority: t.priority,
+    days_overdue: daysOverdue,
+    assignee: t.assignee,
+    department: t.department,
+  };
+}
+
+/**
+ * Build the context slice the modal posts to /api/draft-action.
+ * Filters to overdue OR blocked tasks; further filters by dept or
+ * assignee when specified.
+ */
+function buildModalContext(
+  dataset: NormalizedDataset,
+  filter: { department?: string; assignee?: string }
+): DraftActionContext {
+  const today = new Date(dataset.today + "T00:00:00");
+  const matches = (t: Task) => {
+    if (filter.department && t.department !== filter.department) return false;
+    if (filter.assignee && t.assignee !== filter.assignee) return false;
+    return t.overdue || t.status === "Blocked";
+  };
+  const tasks = dataset.tasks
+    .filter(matches)
+    .map((t) => toContextItem(t, today));
+  return {
+    department: filter.department,
+    assignee: filter.assignee,
+    tasks,
+  };
+}
+
+interface ModalState {
+  actionType: ActionType;
+  context: DraftActionContext;
+}
+
 export default function Home() {
   const [dataset, setDataset] = useState<NormalizedDataset | null>(null);
   const [pinnedTaskId, setPinnedTaskId] = useState<string | null>(null);
   const [tableFilters, setTableFilters] =
     useState<TaskTableFilters>(EMPTY_FILTERS);
   const [tableOpen, setTableOpen] = useState(false);
+  const [modal, setModal] = useState<ModalState | null>(null);
 
   /** Pin a task from the attention list; clear any filters; open + scroll. */
   const handleTaskClick = (id: string) => {
@@ -61,11 +120,26 @@ export default function Home() {
     setTimeout(scrollToTable, 80);
   };
 
+  /** Hero primary + attention standup — open the draft-action modal. */
+  const handleOpenModal = (params: {
+    actionType: ActionType;
+    department?: string;
+    assignee?: string;
+  }) => {
+    if (!dataset) return;
+    const context = buildModalContext(dataset, {
+      department: params.department,
+      assignee: params.assignee,
+    });
+    setModal({ actionType: params.actionType, context });
+  };
+
   const handleNewUpload = () => {
     setDataset(null);
     setPinnedTaskId(null);
     setTableFilters(EMPTY_FILTERS);
     setTableOpen(false);
+    setModal(null);
   };
 
   // ---- Empty / upload state -------------------------------------------
@@ -108,11 +182,19 @@ export default function Home() {
           </div>
         </header>
 
-        <Hero dataset={dataset} onViewTasks={handleViewTasks} />
+        <Hero
+          dataset={dataset}
+          onViewTasks={handleViewTasks}
+          onOpenModal={handleOpenModal}
+        />
 
         <KpiTiles dataset={dataset} />
 
-        <AttentionList dataset={dataset} onTaskClick={handleTaskClick} />
+        <AttentionList
+          dataset={dataset}
+          onTaskClick={handleTaskClick}
+          onOpenModal={handleOpenModal}
+        />
 
         <WorkloadChart dataset={dataset} />
 
@@ -126,6 +208,15 @@ export default function Home() {
           onFiltersChange={setTableFilters}
         />
       </div>
+
+      {/* Draft action modal — rendered at the top level so it overlays
+          the entire dashboard regardless of which component triggered it. */}
+      <DraftActionModal
+        open={modal !== null}
+        actionType={modal?.actionType ?? "standup_agenda"}
+        context={modal?.context ?? { tasks: [] }}
+        onClose={() => setModal(null)}
+      />
     </main>
   );
 }

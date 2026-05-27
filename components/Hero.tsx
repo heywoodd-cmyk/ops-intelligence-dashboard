@@ -2,23 +2,63 @@
 
 import { heroCopy } from "@/lib/hero";
 import type { NormalizedDataset } from "@/lib/schema";
+import type { ActionType } from "@/components/DraftActionModal";
 
 interface HeroProps {
   dataset: NormalizedDataset;
-  /**
-   * Called when the secondary "View {…} tasks" button is clicked.
-   * Page-level handler scrolls to the table, opens it, and applies the
-   * filter. Unwired for status-driven and all-clear branches.
-   */
+  /** Secondary "View {…} tasks" — filter the task table and scroll. */
   onViewTasks?: (
     field: "department" | "assignee",
     value: string
   ) => void;
+  /** Primary "Brief / Draft / Generate" — open the draft-action modal. */
+  onOpenModal?: (params: {
+    actionType: ActionType;
+    department?: string;
+    assignee?: string;
+  }) => void;
 }
 
-export function Hero({ dataset, onViewTasks }: HeroProps) {
+/**
+ * Map the hero's `action` identifier to the modal's action_type plus a
+ * flag for whether the dataset has anything to draft from.
+ *
+ *   brief-department   → department_brief
+ *   draft-message      → individual_message
+ *   draft-update       → standup_agenda (status-driven branch)
+ *   generate-summary   → null (all-clear; nothing to summarize, disabled)
+ */
+function primaryActionType(action: string): ActionType | null {
+  switch (action) {
+    case "brief-department":
+      return "department_brief";
+    case "draft-message":
+      return "individual_message";
+    case "draft-update":
+      return "standup_agenda";
+    default:
+      return null;
+  }
+}
+
+export function Hero({ dataset, onViewTasks, onOpenModal }: HeroProps) {
   const copy = heroCopy(dataset);
   const { headline, subline, buttons, context } = copy;
+
+  const primaryAction = buttons[0]?.action;
+  const actionType = primaryAction
+    ? primaryActionType(primaryAction)
+    : null;
+  const primaryDisabled = actionType === null;
+
+  const handlePrimary = () => {
+    if (!actionType) return;
+    onOpenModal?.({
+      actionType,
+      department: context?.department,
+      assignee: context?.assignee,
+    });
+  };
 
   const handleSecondary = (action: string) => {
     if (action === "view-department" && context?.department) {
@@ -26,14 +66,12 @@ export function Hero({ dataset, onViewTasks }: HeroProps) {
     } else if (action === "view-assignee" && context?.assignee) {
       onViewTasks?.("assignee", context.assignee);
     }
-    // Other secondary actions (view-overdue, etc.) intentionally unwired
-    // for Phase 1.5 — that's Phase 3 / future work.
+    // Other secondary actions (view-overdue, etc.) intentionally unwired.
   };
 
   return (
     <section className="relative py-12">
-      {/* Subtle violet glow behind the headline. Pointer-events disabled
-          so the entire section stays clickable through it. */}
+      {/* Subtle violet glow behind the headline. */}
       <div
         aria-hidden
         className="absolute inset-0 pointer-events-none"
@@ -52,19 +90,19 @@ export function Hero({ dataset, onViewTasks }: HeroProps) {
         <div className="flex items-center gap-2 flex-wrap">
           {buttons.map((b, i) => {
             const isPrimary = i === 0;
+            const disabled = isPrimary && primaryDisabled;
             return (
               <button
                 key={b.action}
                 onClick={
                   isPrimary
-                    ? () => {
-                        /* Primary wired in Phase 3 (DraftActionModal) */
-                      }
+                    ? handlePrimary
                     : () => handleSecondary(b.action)
                 }
+                disabled={disabled}
                 className={
                   isPrimary
-                    ? "text-sm font-medium px-4 py-2 rounded-md bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                    ? "text-sm font-medium px-4 py-2 rounded-md bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
                     : "text-sm text-secondary px-4 py-2 rounded-md hover:bg-card-border transition-colors"
                 }
               >

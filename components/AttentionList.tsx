@@ -4,10 +4,17 @@ import { ChevronDown } from "lucide-react";
 import { attentionRows, type AttentionRow } from "@/lib/urgency";
 import { recommendAction } from "@/lib/recommendations";
 import type { NormalizedDataset, Task } from "@/lib/schema";
+import type { ActionType } from "@/components/DraftActionModal";
 
 interface AttentionListProps {
   dataset: NormalizedDataset;
   onTaskClick?: (id: string) => void;
+  /** Standup row's "Generate" button — open the draft-action modal. */
+  onOpenModal?: (params: {
+    actionType: ActionType;
+    department?: string;
+    assignee?: string;
+  }) => void;
 }
 
 const ROSE = "#f43f5e";
@@ -18,7 +25,11 @@ const ROSE_BUDGET = 3;
  * synthesized standup row. Task rows are expandable (<details>) and
  * reveal owner, department, and a deterministic recommendation.
  */
-export function AttentionList({ dataset, onTaskClick }: AttentionListProps) {
+export function AttentionList({
+  dataset,
+  onTaskClick,
+  onOpenModal,
+}: AttentionListProps) {
   const rows = attentionRows(dataset);
   if (rows.length === 0) return null;
 
@@ -59,6 +70,7 @@ export function AttentionList({ dataset, onTaskClick }: AttentionListProps) {
             showRose={showRose}
             dataset={dataset}
             onTaskClick={onTaskClick}
+            onOpenModal={onOpenModal}
             animationDelay={`${ROW_BASE_DELAY_MS + i * ROW_STEP_MS}ms`}
           />
         ))}
@@ -73,6 +85,7 @@ function RowContainer({
   showRose,
   dataset,
   onTaskClick,
+  onOpenModal,
   animationDelay,
 }: {
   row: AttentionRow;
@@ -80,11 +93,22 @@ function RowContainer({
   showRose: boolean;
   dataset: NormalizedDataset;
   onTaskClick?: (id: string) => void;
+  onOpenModal?: (params: {
+    actionType: ActionType;
+    department?: string;
+    assignee?: string;
+  }) => void;
   animationDelay: string;
 }) {
   // Standup (synthesized) rows stay non-expandable — single line.
   if (row.synthesized) {
-    return <StandupRow row={row} animationDelay={animationDelay} />;
+    return (
+      <StandupRow
+        row={row}
+        onOpenModal={onOpenModal}
+        animationDelay={animationDelay}
+      />
+    );
   }
 
   return (
@@ -101,11 +125,22 @@ function RowContainer({
 
 function StandupRow({
   row,
+  onOpenModal,
   animationDelay,
 }: {
   row: AttentionRow;
+  onOpenModal?: (params: {
+    actionType: ActionType;
+    department?: string;
+    assignee?: string;
+  }) => void;
   animationDelay: string;
 }) {
+  const handleGenerate = () => {
+    // Standup agenda draws from all overdue/blocked tasks — no dept/assignee filter.
+    onOpenModal?.({ actionType: "standup_agenda" });
+  };
+
   return (
     <div
       className="px-6 py-4 flex items-center justify-between gap-4 animate-fade-in-up"
@@ -116,9 +151,7 @@ function StandupRow({
         <span className="text-sm text-primary truncate">{row.sentence}</span>
       </div>
       <button
-        onClick={() => {
-          /* standup Generate — wired in Phase 3 */
-        }}
+        onClick={handleGenerate}
         className="text-xs text-secondary px-3 py-1.5 rounded-md hover:bg-card-border transition-colors flex-shrink-0"
       >
         {row.action}
