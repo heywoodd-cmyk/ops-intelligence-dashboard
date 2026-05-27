@@ -13,9 +13,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ops Intelligence Dashboard",
-  description: "AI-powered operational insights — bottlenecks, overdue patterns, and workload analysis.",
+  title: "Operations Brief",
+  description:
+    "Adaptive operational brief — bottlenecks, overdue patterns, and workload at a glance.",
 };
+
+// If Geist ever fails to fetch in dev, swap the two imports above for:
+//   import { Inter, JetBrains_Mono } from "next/font/google";
+//   const sans = Inter({ ... }); const mono = JetBrains_Mono({ ... });
+// One attempt on Geist, then fall back — per the refactor spec.
 
 export default function RootLayout({
   children,
@@ -27,7 +33,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-page text-primary font-sans">
+        {children}
+      </body>
     </html>
   );
 }

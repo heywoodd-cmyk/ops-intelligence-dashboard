@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------------ */
+/* Operations Brief — executive-grade dark palette                    */
+/* Reference points: Linear app, Vercel project dashboard, Stripe home */
+/* ------------------------------------------------------------------ */
+
 :root {
-  --background: #0c0f1a;
-  --foreground: #d0d8ec;
+  --background: #0a0a0b;          /* warmer than pure black */
+  --foreground: #fafafa;          /* zinc-50 — primary text  */
 }
 
 @theme inline {
@@ -11,12 +16,15 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Calm dark palette */
-  --color-page: #0c0f1a;
-  --color-card: #111520;
-  --color-card-border: #1c2235;
-  --color-surface: #161b2a;
-  --color-muted: #6b778f;
+  /* Surfaces */
+  --color-page:        #0a0a0b;
+  --color-card:        #131316;
+  --color-card-border: #1f1f23;
+
+  /* Text scale */
+  --color-text-primary:   #fafafa;  /* zinc-50  */
+  --color-text-secondary: #a1a1aa;  /* zinc-400 */
+  --color-text-muted:     #71717a;  /* zinc-500 */
 }
 
 body {
@@ -24,9 +32,11 @@ body {
   color: var(--foreground);
 }
 
-/* Utility classes for the calm palette */
-.bg-page    { background-color: #0c0f1a; }
-.bg-card    { background-color: #111520; }
-.bg-surface { background-color: #161b2a; }
-.border-card-border { border-color: #1c2235; }
-.text-muted { color: #6b778f; }
+/* Utility classes (not in Tailwind core — keep these explicit) */
+.bg-page          { background-color: #0a0a0b; }
+.bg-card          { background-color: #131316; }
+.border-card-border { border-color: #1f1f23; }
+
+.text-primary    { color: #fafafa; }
+.text-secondary  { color: #a1a1aa; }
+.text-muted      { color: #71717a; }

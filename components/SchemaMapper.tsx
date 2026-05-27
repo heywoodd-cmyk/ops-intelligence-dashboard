@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import {
-  CANONICAL_FIELDS,
-  CANONICAL_STATUSES,
+  LEGACY_CANONICAL_FIELDS as CANONICAL_FIELDS,
+  LEGACY_CANONICAL_STATUSES as CANONICAL_STATUSES,
   REQUIRED_FIELDS,
-  CanonicalField,
-  CanonicalStatus,
+  LegacyCanonicalField as CanonicalField,
+  LegacyCanonicalStatus as CanonicalStatus,
   ProposedMapping,
 } from "@/lib/schema";
 import { AlertTriangle, ArrowRight, Sparkles, X } from "lucide-react";

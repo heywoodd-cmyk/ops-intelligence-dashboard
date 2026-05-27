@@ -1,84 +1,111 @@
 "use client";
 
-import { Task } from "@/app/api/analyze/route";
 import {
-  BarChart,
   Bar,
-  XAxis,
-  YAxis,
+  BarChart,
   CartesianGrid,
-  Tooltip,
   Legend,
   ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
+import type { NormalizedDataset } from "@/lib/schema";
 
 interface WorkloadChartProps {
-  tasks: Task[];
+  dataset: NormalizedDataset;
 }
 
+// Palette per Friday-demo spec — tonal zinc with rose for Blocked.
+// Stack ordered bottom→top so Blocked sits at the eye-catching top.
 const STATUS_COLORS: Record<string, string> = {
-  Done: "#6ee7b7",
-  "In Progress": "#93c5fd",
-  Blocked: "#fca5a5",
-  "Not Started": "#374151",
+  Done: "#3f3f46",         // zinc-700
+  "Not Started": "#52525b", // zinc-600
+  "In Progress": "#d4d4d8", // zinc-300
+  Blocked: "#f43f5e",      // rose-500
 };
 
-// Stacks show RAW status only — Overdue is a flag, not a status.
-// (Per-person overdue counts surface in the AI insights and Overdue filter.)
-const STATUSES = ["Done", "In Progress", "Blocked", "Not Started"];
+const STACK_ORDER = ["Done", "Not Started", "In Progress", "Blocked"];
 
-export function WorkloadChart({ tasks }: WorkloadChartProps) {
-  const assignees = [...new Set(tasks.map((t) => t.assignee))].sort();
+/**
+ * Per-assignee stacked task counts. Hides itself entirely when the
+ * dataset lacks an assignee column.
+ */
+export function WorkloadChart({ dataset }: WorkloadChartProps) {
+  if (!dataset.hasAssignee) return null;
+
+  // Group tasks by assignee. Tasks with null assignee (shouldn't happen
+  // when hasAssignee=true, but defensive) are excluded.
+  const assignees = Array.from(
+    new Set(
+      dataset.tasks
+        .map((t) => t.assignee)
+        .filter((a): a is string => !!a)
+    )
+  ).sort();
+
+  if (assignees.length === 0) return null;
 
   const data = assignees.map((name) => {
-    const at = tasks.filter((t) => t.assignee === name);
-    const row: Record<string, string | number> = { name: name.split(" ")[0] };
-    STATUSES.forEach((s) => {
-      const target = s === "Done" ? ["Done", "Completed"] : [s];
-      row[s] = at.filter((t) => target.includes(t.status)).length;
-    });
+    const theirTasks = dataset.tasks.filter((t) => t.assignee === name);
+    const row: Record<string, string | number> = {
+      name: name.split(/\s+/)[0],
+    };
+    for (const status of STACK_ORDER) {
+      row[status] = theirTasks.filter((t) => t.status === status).length;
+    }
     return row;
   });
 
   return (
-    <div className="rounded-xl border border-card-border bg-card p-5">
-      <h3 className="text-[10px] font-semibold text-muted uppercase tracking-widest mb-5">
-        Workload by Assignee
-      </h3>
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1c2235" />
-          <XAxis
-            dataKey="name"
-            tick={{ fill: "#6b778f", fontSize: 11 }}
-            axisLine={{ stroke: "#1c2235" }}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fill: "#6b778f", fontSize: 11 }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "#111520",
-              border: "1px solid #1c2235",
-              borderRadius: "10px",
-              color: "#d0d8ec",
-              fontSize: 12,
-            }}
-            cursor={{ fill: "rgba(255,255,255,0.03)" }}
-          />
-          <Legend
-            wrapperStyle={{ color: "#6b778f", fontSize: 11 }}
-            iconType="circle"
-            iconSize={7}
-          />
-          {STATUSES.map((s) => (
-            <Bar key={s} dataKey={s} stackId="a" fill={STATUS_COLORS[s]} radius={s === "Done" ? [3, 3, 0, 0] : undefined} />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <section>
+      <p className="text-xs text-muted uppercase tracking-widest mb-4">
+        Workload by assignee
+      </p>
+      <div className="bg-card border border-card-border rounded-md p-6">
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart
+            data={data}
+            margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#1f1f23" />
+            <XAxis
+              dataKey="name"
+              tick={{ fill: "#71717a", fontSize: 11 }}
+              axisLine={{ stroke: "#1f1f23" }}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: "#71717a", fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#131316",
+                border: "1px solid #1f1f23",
+                borderRadius: "6px",
+                color: "#fafafa",
+                fontSize: 12,
+              }}
+              cursor={{ fill: "rgba(255,255,255,0.03)" }}
+            />
+            <Legend
+              wrapperStyle={{ color: "#71717a", fontSize: 11 }}
+              iconType="circle"
+              iconSize={7}
+            />
+            {STACK_ORDER.map((status) => (
+              <Bar
+                key={status}
+                dataKey={status}
+                stackId="a"
+                fill={STATUS_COLORS[status]}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
   );
 }

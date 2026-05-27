@@ -2,43 +2,98 @@
 
 import { useRef, useState } from "react";
 import Papa from "papaparse";
-import { Task } from "@/app/api/analyze/route";
+import { Upload, Loader2 } from "lucide-react";
 import {
-  isCanonicalCSV,
-  canonicalRowsToTasks,
+  matchColumns,
+  mergeAIMapping,
+  normalizeDataset,
+  type CanonicalField,
+  type NormalizedDataset,
 } from "@/lib/schema";
-import { Upload, FileText } from "lucide-react";
 
 interface CSVUploadProps {
-  /** Called when CSV matches the canonical schema (fallback path — instant load). */
-  onCanonicalData: (tasks: Task[]) => void;
-  /** Called when CSV needs schema mapping. Parent triggers the AI mapping call. */
-  onRawData: (
-    rawData: Record<string, string>[],
-    rawHeaders: string[]
-  ) => void;
+  /** Emitted once the full pipeline (parse → match → AI fallback → normalize) finishes. */
+  onDataset: (dataset: NormalizedDataset) => void;
 }
 
-export function CSVUpload({ onCanonicalData, onRawData }: CSVUploadProps) {
+/**
+ * Single-pipeline upload. Every CSV runs:
+ *   1. PapaParse → row objects
+ *   2. matchColumns (deterministic alias match)
+ *   3. /api/map-columns for any unresolved headers (silent fallback if it fails)
+ *   4. normalizeDataset → canonical NormalizedDataset
+ *
+ * No mapping confirmation screen, no validation screen. The DataQualityBadge
+ * in the header surfaces what was mapped/inferred/missing.
+ */
+export function CSVUpload({ onDataset }: CSVUploadProps) {
   const [dragging, setDragging] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null); // status label
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleParsed = (rows: Record<string, string>[]) => {
-    if (rows.length === 0) return;
-    if (isCanonicalCSV(rows)) {
-      onCanonicalData(canonicalRowsToTasks(rows));
-    } else {
-      const headers = Object.keys(rows[0]);
-      onRawData(rows, headers);
+  const runPipeline = async (rawRows: Record<string, string>[]) => {
+    if (rawRows.length === 0) return;
+
+    setLoading("Reading columns…");
+    const match = matchColumns(rawRows);
+    let finalMap = match.resolved;
+
+    if (match.unresolved.length > 0) {
+      setLoading("Mapping unfamiliar columns with Claude…");
+      try {
+        const res = await fetch("/api/map-columns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ unresolvedColumns: match.unresolved }),
+        });
+        if (res.ok) {
+          const { mapping } = (await res.json()) as {
+            mapping: Record<string, CanonicalField | "ignore">;
+          };
+          finalMap = mergeAIMapping(match.resolved, mapping);
+        }
+        // On non-OK or network failure: keep deterministic-only mapping.
+        // Missing fields surface in the Data Quality badge — no crash.
+      } catch {
+        /* silent fallback */
+      }
     }
+
+    setLoading("Normalizing dataset…");
+    const dataset = normalizeDataset(rawRows, finalMap);
+    setLoading(null);
+    onDataset(dataset);
   };
 
   const parseFile = (file: File) => {
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (result) => handleParsed(result.data),
+      complete: (result) => runPipeline(result.data),
     });
+  };
+
+  const loadSampleFile = async (filename: string) => {
+    setLoading("Loading sample…");
+    try {
+      const res = await fetch(`/${filename}`);
+      if (!res.ok) {
+        setLoading(null);
+        // eslint-disable-next-line no-alert
+        alert(
+          `${filename} isn't available yet. (Generated in Phase 4 of the refactor.)`
+        );
+        return;
+      }
+      const text = await res.text();
+      const result = Papa.parse<Record<string, string>>(text, {
+        header: true,
+        skipEmptyLines: true,
+      });
+      runPipeline(result.data);
+    } catch {
+      setLoading(null);
+    }
   };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,29 +108,8 @@ export function CSVUpload({ onCanonicalData, onRawData }: CSVUploadProps) {
     if (file && file.name.endsWith(".csv")) parseFile(file);
   };
 
-  const loadSample = async () => {
-    const res = await fetch("/sample.csv");
-    const text = await res.text();
-    const result = Papa.parse<Record<string, string>>(text, {
-      header: true,
-      skipEmptyLines: true,
-    });
-    handleParsed(result.data);
-  };
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-[55vh] gap-5 px-4">
-      <div className="text-center space-y-2">
-        <h2 className="text-xl font-semibold text-[#d0d8ec]">
-          Upload your operations CSV
-        </h2>
-        <p className="text-muted text-sm max-w-sm">
-          Drop in a CSV of tasks, assignees, and due dates. Mismatched columns
-          or status values will be mapped to the canonical schema before the
-          dashboard loads.
-        </p>
-      </div>
-
+    <div className="flex flex-col items-center justify-center gap-8 px-4">
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -84,18 +118,18 @@ export function CSVUpload({ onCanonicalData, onRawData }: CSVUploadProps) {
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`w-full max-w-md rounded-2xl border-2 border-dashed cursor-pointer transition-all p-10 text-center ${
+        className={`w-full max-w-xl rounded-md border border-dashed cursor-pointer transition-colors p-10 text-center ${
           dragging
-            ? "border-violet-500/50 bg-violet-950/20"
-            : "border-[#1c2235] bg-card hover:border-[#2d3450] hover:bg-[#131825]"
+            ? "border-violet-500 bg-violet-950/10"
+            : "border-card-border bg-card hover:border-zinc-700"
         }`}
       >
-        <Upload className="w-6 h-6 text-muted mx-auto mb-3" />
-        <p className="text-[#8b96b0] text-sm font-medium">
+        <Upload className="w-5 h-5 text-muted mx-auto mb-4" />
+        <p className="text-sm text-primary mb-1.5">
           Drop CSV here or click to browse
         </p>
-        <p className="text-muted text-xs mt-1.5">
-          Any column names — we&apos;ll map them to the canonical schema.
+        <p className="text-xs text-muted">
+          Any column names — unrecognized ones get mapped automatically.
         </p>
         <input
           ref={inputRef}
@@ -106,24 +140,63 @@ export function CSVUpload({ onCanonicalData, onRawData }: CSVUploadProps) {
         />
       </div>
 
-      <div className="flex items-center gap-3 text-muted">
-        <span className="h-px w-12 bg-[#1c2235]" />
-        <span className="text-xs">or</span>
-        <span className="h-px w-12 bg-[#1c2235]" />
+      <div className="flex items-center gap-3 text-muted text-xs">
+        <span className="h-px w-12 bg-card-border" />
+        <span>or load a sample</span>
+        <span className="h-px w-12 bg-card-border" />
       </div>
 
-      <button
-        onClick={loadSample}
-        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600/80 hover:bg-violet-600 text-white font-medium text-sm transition-colors"
-      >
-        <FileText className="w-4 h-4" />
-        Load Sample Dataset
-      </button>
+      <div className="flex items-center gap-2 flex-wrap justify-center">
+        <SampleButton
+          label="Clean sample"
+          onClick={() => loadSampleFile("sample-clean.csv")}
+          disabled={loading !== null}
+          primary
+        />
+        <SampleButton
+          label="Messy sample"
+          onClick={() => loadSampleFile("sample-messy.csv")}
+          disabled={loading !== null}
+        />
+        <SampleButton
+          label="Sparse sample"
+          onClick={() => loadSampleFile("sample-sparse.csv")}
+          disabled={loading !== null}
+        />
+      </div>
 
-      <p className="text-[#4a5568] text-xs text-center max-w-xs">
-        35-task sample across Engineering, Product, Operations, Security & HR —
-        canonical schema, loads instantly.
-      </p>
+      {loading && (
+        <div className="flex items-center gap-2 text-xs text-muted">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          {loading}
+        </div>
+      )}
     </div>
+  );
+}
+
+function SampleButton({
+  label,
+  onClick,
+  disabled,
+  primary,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={
+        primary
+          ? "text-sm font-medium px-4 py-2 rounded-md bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          : "text-sm text-secondary px-4 py-2 rounded-md hover:bg-card-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      }
+    >
+      {label}
+    </button>
   );
 }

@@ -1,8 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  CANONICAL_FIELDS,
-  CANONICAL_STATUSES,
+  LEGACY_CANONICAL_FIELDS as CANONICAL_FIELDS,
+  LEGACY_CANONICAL_STATUSES as CANONICAL_STATUSES,
   ProposedMapping,
 } from "@/lib/schema";
 
