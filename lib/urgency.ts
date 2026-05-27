@@ -23,6 +23,18 @@ function daysOverdue(task: Task, today: Date): number {
   );
 }
 
+/**
+ * Human-readable task reference: "Task name (T-XXX)" when a real name is
+ * available; falls back to bare "T-XXX" when task_name is missing or was
+ * synthesized as a placeholder (lib/schema.ts uses "(untitled …)" when
+ * neither a task_name column nor a fallback text column exists).
+ */
+function taskRef(task: Task): string {
+  const name = task.task_name?.trim() ?? "";
+  if (!name || name.startsWith("(untitled")) return task.task_id;
+  return `${name} (${task.task_id})`;
+}
+
 /** Spec formula: overdue 100, blocked 50, critical 30 / high 15, days×2 */
 function urgencyScore(task: Task, today: Date): number {
   return (
@@ -57,11 +69,12 @@ export function attentionRows(dataset: NormalizedDataset): AttentionRow[] {
     const overdue = task.overdue;
     const days = daysOverdue(task, today);
     const critical = task.priority === "Critical";
+    const ref = taskRef(task);
 
     if (blocked && overdue) {
       return {
         taskId: task.task_id,
-        sentence: `${task.task_id} has been blocked ${days} ${days === 1 ? "day" : "days"}.`,
+        sentence: `${ref} has been blocked ${days} ${days === 1 ? "day" : "days"}.`,
         action: "Unblock",
         rose: true,
       };
@@ -69,7 +82,7 @@ export function attentionRows(dataset: NormalizedDataset): AttentionRow[] {
     if (critical && overdue) {
       return {
         taskId: task.task_id,
-        sentence: `${task.task_id} is critical and ${days} ${days === 1 ? "day" : "days"} past due.`,
+        sentence: `${ref} is critical and ${days} ${days === 1 ? "day" : "days"} past due.`,
         action: "Escalate",
         rose: true,
       };
@@ -77,7 +90,7 @@ export function attentionRows(dataset: NormalizedDataset): AttentionRow[] {
     if (overdue) {
       return {
         taskId: task.task_id,
-        sentence: `${task.task_id} is ${days} ${days === 1 ? "day" : "days"} past due.`,
+        sentence: `${ref} is ${days} ${days === 1 ? "day" : "days"} past due.`,
         action: "View",
         rose: true,
       };
@@ -85,7 +98,7 @@ export function attentionRows(dataset: NormalizedDataset): AttentionRow[] {
     if (blocked) {
       return {
         taskId: task.task_id,
-        sentence: `${task.task_id} is blocked.`,
+        sentence: `${ref} is blocked.`,
         action: "Unblock",
         rose: true,
       };
@@ -93,7 +106,7 @@ export function attentionRows(dataset: NormalizedDataset): AttentionRow[] {
     // Remaining: critical / high but not overdue
     return {
       taskId: task.task_id,
-      sentence: `${task.task_id} needs review.`,
+      sentence: `${ref} needs review.`,
       action: "View",
       rose: false,
     };

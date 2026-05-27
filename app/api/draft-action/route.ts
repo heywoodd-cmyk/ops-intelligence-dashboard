@@ -78,11 +78,15 @@ function buildPrompt(actionType: ActionType, context: ActionContext): string {
     const lead = inferLead(context.tasks);
     const leadInstruction = lead
       ? `Use the team lead's first name once at the start. The lead is ${firstName(lead)}.`
-      : `Address the team broadly — no specific name.`;
+      : `Address the team broadly. No specific name.`;
 
     return `Draft a brief Slack message from an operations manager to the ${context.department ?? "team"} team lead about the following blocked or overdue tasks (${count} total).
 
-Tone: warm, direct, problem-solving. Under 100 words. End with a question that opens the conversation rather than an order. ${leadInstruction} No greeting block beyond that. Reference specific task IDs where it helps.
+Tone: warm, direct, problem-solving. Under 100 words. End with a question that opens the conversation rather than an order. ${leadInstruction} No greeting block beyond that.
+
+When referencing specific tasks, lead with the human-readable task name and put the task ID in parentheses after it. Example: "Security audit on access controls (T-004)". Never lead with the ID alone.
+
+Never use em-dashes (—) or en-dashes (–). Use periods, commas, or colons instead.
 
 Tasks:
 ${taskList}
@@ -94,7 +98,11 @@ Write the message only. No preface, no explanation, no quotes around it.`;
     const name = context.assignee ? firstName(context.assignee) : "the assignee";
     return `Draft a brief Slack message from an operations manager to ${name} directly about the following blocked or overdue tasks they own (${count} total).
 
-Tone: warm, direct, problem-solving. Under 100 words. End with a question that opens the conversation rather than an order. Use ${name} once at the start. No greeting block beyond that. Reference specific task IDs where it helps.
+Tone: warm, direct, problem-solving. Under 100 words. End with a question that opens the conversation rather than an order. Use ${name} once at the start. No greeting block beyond that.
+
+When referencing specific tasks, lead with the human-readable task name and put the task ID in parentheses after it. Example: "Security audit on access controls (T-004)". Never lead with the ID alone.
+
+Never use em-dashes (—) or en-dashes (–). Use periods, commas, or colons instead.
 
 Tasks:
 ${taskList}
@@ -105,7 +113,11 @@ Write the message only. No preface, no explanation, no quotes around it.`;
   // standup_agenda
   return `Draft a 4-bullet agenda for Monday standup based on these overdue or blocked tasks (${count} total).
 
-Each bullet is one sentence, names the task ID, and ends with a question to discuss. Under 80 words total. Bullets use a leading "- " marker. If fewer than 4 distinct tasks warrant a bullet, write fewer bullets — do not pad.
+Each bullet is one sentence. Lead with the human-readable task name and put the task ID in parentheses immediately after, then state the issue, then end with a question to discuss. Example: "- Security audit on access controls (T-004) is 73 days blocked. What is the path to unblock this week?"
+
+Under 80 words total. Bullets use a leading "- " marker. If fewer than 4 distinct tasks warrant a bullet, write fewer bullets. Do not pad.
+
+Never use em-dashes (—) or en-dashes (–). Use periods, commas, or colons instead.
 
 Tasks:
 ${taskList}

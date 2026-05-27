@@ -77,7 +77,7 @@ export function Hero({ dataset, onViewTasks, onOpenModal }: HeroProps) {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 400px 200px at 0% 30%, rgba(139, 92, 246, 0.08), transparent)",
+            "radial-gradient(ellipse 400px 200px at 0% 30%, rgba(139, 92, 246, 0.05), transparent)",
         }}
       />
       <div className="relative">
