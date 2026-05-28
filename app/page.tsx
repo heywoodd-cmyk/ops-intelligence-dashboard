@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CSVUpload } from "@/components/CSVUpload";
 import { Hero } from "@/components/Hero";
 import { KpiTiles } from "@/components/KpiTiles";
@@ -18,7 +18,12 @@ import {
   type DraftActionContext,
   type TaskContextItem,
 } from "@/components/DraftActionModal";
-import type { NormalizedDataset, Task } from "@/lib/schema";
+import type {
+  CanonicalStatus,
+  NormalizedDataset,
+  Task,
+} from "@/lib/schema";
+import { modifiedTaskIdSet, setTaskStatus } from "@/lib/edit";
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString("en-US", {
@@ -40,7 +45,6 @@ function scrollToTable() {
 
 const MS_PER_DAY = 86_400_000;
 
-/** Convert a canonical Task into the modal's wire-format context item. */
 function toContextItem(t: Task, today: Date): TaskContextItem {
   const daysOverdue =
     t.overdue && t.due_date
@@ -60,11 +64,6 @@ function toContextItem(t: Task, today: Date): TaskContextItem {
   };
 }
 
-/**
- * Build the context slice the modal posts to /api/draft-action.
- * Filters to overdue OR blocked tasks; further filters by dept or
- * assignee when specified.
- */
 function buildModalContext(
   dataset: NormalizedDataset,
   filter: { department?: string; assignee?: string }
@@ -92,13 +91,41 @@ interface ModalState {
 
 export default function Home() {
   const [dataset, setDataset] = useState<NormalizedDataset | null>(null);
+  const [originalDataset, setOriginalDataset] =
+    useState<NormalizedDataset | null>(null);
   const [pinnedTaskId, setPinnedTaskId] = useState<string | null>(null);
   const [tableFilters, setTableFilters] =
     useState<TaskTableFilters>(EMPTY_FILTERS);
   const [tableOpen, setTableOpen] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
 
-  /** Pin a task from the attention list; clear any filters; open + scroll. */
+  /** Track which task IDs differ from the original dataset by status. */
+  const modifiedTaskIds = useMemo(() => {
+    if (!dataset || !originalDataset) return new Set<string>();
+    return modifiedTaskIdSet(dataset, originalDataset);
+  }, [dataset, originalDataset]);
+
+  const canReset = modifiedTaskIds.size > 0;
+
+  /** First-time dataset load — snapshot it as the "original" too. */
+  const handleSetDataset = (d: NormalizedDataset) => {
+    setDataset(d);
+    setOriginalDataset(d);
+  };
+
+  /** Inline status edit from the task table. */
+  const handleStatusChange = (taskId: string, newStatus: CanonicalStatus) => {
+    setDataset((prev) =>
+      prev ? setTaskStatus(prev, taskId, newStatus) : null
+    );
+  };
+
+  /** Reset to original — discards all status edits. */
+  const handleReset = () => {
+    if (!originalDataset) return;
+    setDataset(originalDataset);
+  };
+
   const handleTaskClick = (id: string) => {
     setPinnedTaskId(id);
     setTableFilters(EMPTY_FILTERS);
@@ -106,7 +133,6 @@ export default function Home() {
     setTimeout(scrollToTable, 50);
   };
 
-  /** Hero secondary button — filter the table to a department or assignee. */
   const handleViewTasks = (
     field: "department" | "assignee",
     value: string
@@ -120,7 +146,6 @@ export default function Home() {
     setTimeout(scrollToTable, 80);
   };
 
-  /** Hero primary + attention standup — open the draft-action modal. */
   const handleOpenModal = (params: {
     actionType: ActionType;
     department?: string;
@@ -136,6 +161,7 @@ export default function Home() {
 
   const handleNewUpload = () => {
     setDataset(null);
+    setOriginalDataset(null);
     setPinnedTaskId(null);
     setTableFilters(EMPTY_FILTERS);
     setTableOpen(false);
@@ -153,7 +179,7 @@ export default function Home() {
             </h1>
             <p className="text-sm text-secondary">{formatDate(new Date())}</p>
           </header>
-          <CSVUpload onDataset={setDataset} />
+          <CSVUpload onDataset={handleSetDataset} />
         </div>
       </main>
     );
@@ -206,11 +232,13 @@ export default function Home() {
           onOpenChange={setTableOpen}
           filters={tableFilters}
           onFiltersChange={setTableFilters}
+          onStatusChange={handleStatusChange}
+          modifiedTaskIds={modifiedTaskIds}
+          canReset={canReset}
+          onReset={handleReset}
         />
       </div>
 
-      {/* Draft action modal — rendered at the top level so it overlays
-          the entire dashboard regardless of which component triggered it. */}
       <DraftActionModal
         open={modal !== null}
         actionType={modal?.actionType ?? "standup_agenda"}

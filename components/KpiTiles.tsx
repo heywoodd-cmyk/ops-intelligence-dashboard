@@ -3,6 +3,7 @@
 import { computeWeeklyDelta } from "@/lib/comparisons";
 import type { NormalizedDataset } from "@/lib/schema";
 import { Sparkline } from "@/components/Sparkline";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 interface KpiTilesProps {
   dataset: NormalizedDataset;
@@ -80,7 +81,8 @@ export function KpiTiles({ dataset }: KpiTilesProps) {
         />
         <Tile
           label="On track"
-          value={`${onTrack}%`}
+          value={onTrack}
+          suffix="%"
           subline={delta ? formatDelta(onTrack, delta.onTrackPrev, "%") : null}
           sparkline={onTrackSpark}
           color={ON_TRACK_COLOR}
@@ -91,21 +93,31 @@ export function KpiTiles({ dataset }: KpiTilesProps) {
   );
 }
 
-function Tile({
-  label,
-  value,
-  subline,
-  sparkline,
-  color,
-  animationDelay,
-}: {
+interface TileProps {
   label: string;
-  value: string | number;
+  /**
+   * Numeric value when the tile should count-up; strings render as-is
+   * (used for the degraded "Tasks loaded" tile, which has no animation
+   * meaning beyond initial render).
+   */
+  value: number | string;
+  /** Optional suffix applied during AnimatedNumber rendering (e.g. "%"). */
+  suffix?: string;
   subline: string | null;
   sparkline: number[] | null;
   color: string;
   animationDelay: string;
-}) {
+}
+
+function Tile({
+  label,
+  value,
+  suffix = "",
+  subline,
+  sparkline,
+  color,
+  animationDelay,
+}: TileProps) {
   return (
     <div
       className="card-surface rounded-md p-6 animate-fade-in-up"
@@ -118,7 +130,14 @@ function Tile({
         className="text-5xl font-medium font-mono tabular-nums tracking-tight"
         style={{ color }}
       >
-        {value}
+        {typeof value === "number" ? (
+          <AnimatedNumber
+            value={value}
+            format={(n) => `${Math.round(n)}${suffix}`}
+          />
+        ) : (
+          value
+        )}
       </p>
       {sparkline && (
         <div className="mt-4">
@@ -150,9 +169,12 @@ function formatDelta(
  * presentational — production would use daily snapshots for a real curve.
  *
  * Endpoints (index 0 = prev value, index 6 = current value) are exact.
- * Intermediate points get ±5% deterministic jitter so the line reads as
- * an organic curve rather than a perfect diagonal. Same inputs always
- * produce the same output — sparkline doesn't dance between renders.
+ * Intermediate points get ±5% deterministic jitter. Seed depends ONLY on
+ * the tile identity (seedKey) and the point index — NOT on the prev or
+ * current value. That way edits to the dataset shift the endpoints but
+ * keep the curve's wiggle pattern stable; magnitudes scale with the
+ * line. Without this, every status edit would reroll the entire curve
+ * shape and read as a flicker.
  */
 function interpolateWithJitter(
   prev: number,
@@ -168,7 +190,7 @@ function interpolateWithJitter(
       continue;
     }
     const magnitude = Math.max(Math.abs(linear), 1); // keep small values visible
-    const noise = deterministicNoise(`${seedKey}-${i}-${prev}-${current}`);
+    const noise = deterministicNoise(`${seedKey}-${i}`);
     const jitter = (noise - 0.5) * 0.1 * magnitude; // ±5% of magnitude
     points.push(linear + jitter);
   }

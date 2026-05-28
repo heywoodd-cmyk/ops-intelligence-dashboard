@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, RotateCcw, Sparkles, X } from "lucide-react";
 import type {
   CanonicalStatus,
   NormalizedDataset,
@@ -24,20 +24,26 @@ interface TaskTableProps {
   pinnedTaskId?: string | null;
   onClearPin?: () => void;
 
-  // Controlled UI state — lifted to page.tsx so the hero "View tasks"
-  // button can drive open + filters in one shot.
+  // Controlled UI state — lifted to page.tsx.
   open: boolean;
   onOpenChange: (open: boolean) => void;
   filters: TaskTableFilters;
   onFiltersChange: (next: TaskTableFilters) => void;
+
+  // Editable-status integration.
+  onStatusChange: (taskId: string, newStatus: CanonicalStatus) => void;
+  modifiedTaskIds: Set<string>;
+  canReset: boolean;
+  onReset: () => void;
 }
 
 const ROSE = "#f43f5e";
+const VIOLET = "#8b5cf6";
 
 const STATUS_STYLES: Record<CanonicalStatus, string> = {
   Done: "bg-zinc-800/80 text-zinc-300 border-zinc-700",
   "In Progress": "bg-zinc-100/5 text-zinc-200 border-zinc-700",
-  Blocked: "",
+  Blocked: "", // inline rose styling applied below
   "Not Started": "bg-zinc-900 text-zinc-500 border-zinc-800",
   Unknown: "bg-zinc-900 text-zinc-600 border-zinc-800 italic",
 };
@@ -50,6 +56,13 @@ const STATUS_ORDER: CanonicalStatus[] = [
   "Unknown",
 ];
 
+const EDITABLE_OPTIONS: CanonicalStatus[] = [
+  "Not Started",
+  "In Progress",
+  "Blocked",
+  "Done",
+];
+
 export function TaskTable({
   dataset,
   pinnedTaskId,
@@ -58,10 +71,13 @@ export function TaskTable({
   onOpenChange,
   filters,
   onFiltersChange,
+  onStatusChange,
+  modifiedTaskIds,
+  canReset,
+  onReset,
 }: TaskTableProps) {
   const tasks = dataset.tasks;
 
-  // Unique values for the filter dropdowns.
   const departments = uniqueSorted(
     tasks.map((t) => t.department).filter((d): d is string => !!d)
   );
@@ -72,8 +88,6 @@ export function TaskTable({
     tasks.some((t) => t.status === s)
   );
 
-  // Apply filters (AND logic). Pin overrides — when pinned, show only
-  // the pinned task and hide the filter bar.
   const visible = pinnedTaskId
     ? tasks.filter((t) => t.task_id === pinnedTaskId)
     : tasks.filter((t) => matchesFilters(t, filters));
@@ -122,7 +136,21 @@ export function TaskTable({
         </summary>
 
         <div className="border-t border-card-border">
-          {/* Filter bar — hidden when pinned (pin is more specific than filters) */}
+          {/* Try-it hint — discoverability cue for the editable status feature.
+              Hidden when pinned (filter bar also hidden then). */}
+          {!pinnedTaskId && (
+            <div className="px-6 py-3 border-b border-card-border flex items-center gap-2 text-sm text-secondary">
+              <Sparkles
+                className="w-3.5 h-3.5 flex-shrink-0"
+                style={{ color: VIOLET }}
+              />
+              <span>
+                Try it: click any status to see how the metrics react.
+              </span>
+            </div>
+          )}
+
+          {/* Filter bar — hidden when pinned. */}
           {!pinnedTaskId &&
             (dataset.hasDepartment ||
               dataset.hasAssignee ||
@@ -134,6 +162,8 @@ export function TaskTable({
                 statuses={statuses}
                 filters={filters}
                 onFiltersChange={onFiltersChange}
+                canReset={canReset}
+                onReset={onReset}
               />
             )}
 
@@ -141,6 +171,11 @@ export function TaskTable({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-card-border">
+                  {/* Leading column for the modified-row dot (no header label) */}
+                  <th
+                    aria-hidden
+                    className="w-4 px-2 py-3"
+                  />
                   {[
                     "ID",
                     "Task",
@@ -165,6 +200,8 @@ export function TaskTable({
                     key={t.task_id}
                     task={t}
                     pinned={t.task_id === pinnedTaskId}
+                    modified={modifiedTaskIds.has(t.task_id)}
+                    onStatusChange={onStatusChange}
                   />
                 ))}
               </tbody>
@@ -186,7 +223,7 @@ export function TaskTable({
 }
 
 // ---------------------------------------------------------------------
-// FilterBar
+// FilterBar (now also hosts the "Reset to original" button)
 // ---------------------------------------------------------------------
 
 function FilterBar({
@@ -196,6 +233,8 @@ function FilterBar({
   statuses,
   filters,
   onFiltersChange,
+  canReset,
+  onReset,
 }: {
   dataset: NormalizedDataset;
   departments: string[];
@@ -203,6 +242,8 @@ function FilterBar({
   statuses: CanonicalStatus[];
   filters: TaskTableFilters;
   onFiltersChange: (next: TaskTableFilters) => void;
+  canReset: boolean;
+  onReset: () => void;
 }) {
   const showDept = dataset.hasDepartment && departments.length > 0;
   const showAssignee = dataset.hasAssignee && assignees.length > 0;
@@ -247,13 +288,24 @@ function FilterBar({
           />
         )}
       </div>
-      <button
-        onClick={clear}
-        disabled={!isDirty}
-        className="text-xs text-muted hover:text-secondary disabled:opacity-30 disabled:cursor-default px-2.5 py-1.5 rounded-md hover:bg-card-border transition-colors"
-      >
-        Clear filters
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={clear}
+          disabled={!isDirty}
+          className="text-xs text-muted hover:text-secondary disabled:opacity-30 disabled:cursor-default px-2.5 py-1.5 rounded-md hover:bg-card-border transition-colors"
+        >
+          Clear filters
+        </button>
+        <button
+          onClick={onReset}
+          disabled={!canReset}
+          title="Discard all status edits and restore the originally loaded data"
+          className="text-xs text-muted hover:text-secondary disabled:opacity-30 disabled:cursor-default px-2.5 py-1.5 rounded-md hover:bg-card-border transition-colors flex items-center gap-1.5"
+        >
+          <RotateCcw className="w-3 h-3" />
+          Reset to original
+        </button>
+      </div>
     </div>
   );
 }
@@ -294,7 +346,17 @@ function FilterSelect({
 // Row
 // ---------------------------------------------------------------------
 
-function Row({ task, pinned }: { task: Task; pinned: boolean }) {
+function Row({
+  task,
+  pinned,
+  modified,
+  onStatusChange,
+}: {
+  task: Task;
+  pinned: boolean;
+  modified: boolean;
+  onStatusChange: (taskId: string, newStatus: CanonicalStatus) => void;
+}) {
   const dueLabel = task.due_date
     ? task.due_date.toLocaleDateString("en-US", {
         month: "short",
@@ -309,6 +371,16 @@ function Row({ task, pinned }: { task: Task; pinned: boolean }) {
         pinned ? "bg-zinc-800/30" : ""
       }`}
     >
+      {/* Modified-row dot column */}
+      <td className="w-4 px-2 py-3">
+        {modified && (
+          <span
+            className="block w-1.5 h-1.5 rounded-full mx-auto"
+            style={{ backgroundColor: VIOLET }}
+            aria-label="Status edited from original"
+          />
+        )}
+      </td>
       <td className="px-4 py-3 text-muted font-mono text-xs">
         {task.task_id}
       </td>
@@ -317,10 +389,7 @@ function Row({ task, pinned }: { task: Task; pinned: boolean }) {
       </td>
       <td className="px-4 py-3 text-secondary">{task.assignee ?? "—"}</td>
       <td className="px-4 py-3">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <StatusPill status={task.status} />
-          {task.overdue && task.status !== "Blocked" && <OverduePill />}
-        </div>
+        <EditableStatusCell task={task} onStatusChange={onStatusChange} />
       </td>
       <td className="px-4 py-3 text-xs text-secondary">{task.priority}</td>
       <td
@@ -334,6 +403,47 @@ function Row({ task, pinned }: { task: Task; pinned: boolean }) {
         {task.department ?? "—"}
       </td>
     </tr>
+  );
+}
+
+// ---------------------------------------------------------------------
+// EditableStatusCell — hidden <select> overlaid on the visible pill,
+// so the existing pill design stays intact and we get native dropdown
+// UX (keyboard, escape-to-close) for free.
+// ---------------------------------------------------------------------
+
+function EditableStatusCell({
+  task,
+  onStatusChange,
+}: {
+  task: Task;
+  onStatusChange: (taskId: string, newStatus: CanonicalStatus) => void;
+}) {
+  return (
+    <div className="relative inline-flex items-center gap-1.5 cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-zinc-800/40 focus-within:ring-2 focus-within:ring-violet-500/40 transition-colors">
+      <StatusPill status={task.status} />
+      {task.overdue && task.status !== "Blocked" && <OverduePill />}
+      <ChevronDown className="w-3 h-3 text-muted" aria-hidden />
+      <select
+        value={task.status}
+        onChange={(e) =>
+          onStatusChange(task.task_id, e.target.value as CanonicalStatus)
+        }
+        aria-label={`Change status for ${task.task_id}`}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      >
+        {task.status === "Unknown" && (
+          <option value="Unknown" disabled>
+            Unknown (current)
+          </option>
+        )}
+        {EDITABLE_OPTIONS.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 
