@@ -19,6 +19,10 @@ import {
   type DraftActionContext,
   type TaskContextItem,
 } from "@/components/DraftActionModal";
+import {
+  KpiDrillModal,
+  type KpiDrillKind,
+} from "@/components/KpiDrillModal";
 import type {
   CanonicalStatus,
   NormalizedDataset,
@@ -116,6 +120,7 @@ export default function Home() {
     useState<TaskTableFilters>(EMPTY_FILTERS);
   const [tableOpen, setTableOpen] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [kpiDrill, setKpiDrill] = useState<KpiDrillKind | null>(null);
 
   /** Track which task IDs differ from the original dataset by status. */
   const modifiedTaskIds = useMemo(() => {
@@ -184,6 +189,7 @@ export default function Home() {
     setTableFilters(EMPTY_FILTERS);
     setTableOpen(false);
     setModal(null);
+    setKpiDrill(null);
   };
 
   // ---- Empty / upload state -------------------------------------------
@@ -235,7 +241,7 @@ export default function Home() {
           onOpenModal={handleOpenModal}
         />
 
-        <KpiTiles dataset={dataset} />
+        <KpiTiles dataset={dataset} onDrillThrough={setKpiDrill} />
 
         <AttentionList
           dataset={dataset}
@@ -265,6 +271,16 @@ export default function Home() {
         actionType={modal?.actionType ?? "standup_agenda"}
         context={modal?.context ?? { tasks: [] }}
         onClose={() => setModal(null)}
+      />
+
+      {/* KPI receipts modal — click any KPI tile to see the rows behind
+          the number. Editing status from inside live-updates everything. */}
+      <KpiDrillModal
+        open={kpiDrill !== null}
+        kind={kpiDrill}
+        dataset={dataset}
+        onStatusChange={handleStatusChange}
+        onClose={() => setKpiDrill(null)}
       />
     </main>
   );

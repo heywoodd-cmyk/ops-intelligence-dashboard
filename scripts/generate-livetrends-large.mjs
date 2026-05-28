@@ -108,13 +108,25 @@ for (let i = 1; i <= N; i++) {
   const status = weighted(STATUSES, STATUS_WEIGHTS);
   const priority = weighted(PRIORITIES, PRIORITY_WEIGHTS);
   const name = `${pick(VERBS)} ${pick(NOUNS)} ${pick(QUALIFIERS)}`;
-  // ±90 day spread around today, slightly biased towards past (so we
-  // get realistic overdue density).
-  const dueOffset = Math.floor((rng() - 0.55) * 180);
-  const due_date = dateOffset(dueOffset);
-  const created_date = dateOffset(-Math.floor(rng() * 120) - 1);
+
+  // created_date sits 1–120 days in the past.
+  const createdOffset = -Math.floor(rng() * 120) - 1;
+  const created_date = dateOffset(createdOffset);
+
+  // due_date sits 14–104 days AFTER created_date — never before. Some
+  // tasks land in the future, others past, depending on createdOffset.
+  // This guarantees zero "dates out of order" in the integrity report.
+  const dueDelta = Math.floor(rng() * 90) + 14;
+  const due_date = dateOffset(createdOffset + dueDelta);
+
+  // completed_date applies only to Done rows; lies between created_date
+  // and today.
   const completed_date =
-    status === "Done" ? dateOffset(-Math.floor(rng() * 60) - 1) : "";
+    status === "Done"
+      ? dateOffset(
+          createdOffset + Math.floor(rng() * Math.max(1, -createdOffset))
+        )
+      : "";
   const snapshot = snapshotFor(status);
 
   rows.push({

@@ -95,7 +95,14 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
     const dataset = normalizeDataset(rawRows, finalMap);
     setLoading(null);
     setError(null);
-    onDataset({ ...dataset, aiMappedFields });
+    // rawRowCount feeds the reconciliation strip below the KPI row.
+    // Pipeline currently never drops rows, so loaded === counted, but
+    // wiring the value through proves it.
+    onDataset({
+      ...dataset,
+      rawRowCount: rawRows.length,
+      aiMappedFields,
+    });
   };
 
   const parseFile = (file: File) => {

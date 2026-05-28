@@ -194,7 +194,16 @@ export interface ParseError {
 
 export interface NormalizedDataset {
   tasks: Task[];
-  rowCount: number;
+  rowCount: number;     // tasks.length — what was counted into metrics
+  /**
+   * Total rows from the source CSV before any pipeline processing.
+   * Reconciliation strip displays rawRowCount → rowCount → (rawRowCount
+   * - rowCount) as the "loaded · counted · excluded" triad. Optional;
+   * absent on the deterministic happy path (normalizeDataset itself
+   * never drops rows, so rawRowCount === rowCount when CSVUpload
+   * doesn't set it).
+   */
+  rawRowCount?: number;
   today: string; // ISO yyyy-mm-dd
 
   // Data-quality metadata — surfaced in the DataQualityBadge

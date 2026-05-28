@@ -1,6 +1,10 @@
 "use client";
 
 import type { CanonicalField, NormalizedDataset } from "@/lib/schema";
+import {
+  integrityIsClean,
+  runIntegrityChecks,
+} from "@/lib/integrity";
 
 interface DataQualityBadgeProps {
   dataset: NormalizedDataset;
@@ -8,16 +12,8 @@ interface DataQualityBadgeProps {
 
 /**
  * Top-right header pill. Hover reveals what the ingestion pipeline did
- * with the uploaded data:
- *   • Recognized   — canonical fields whose source column matched an
- *                    alias deterministically (no AI involved).
- *   • Matched with AI — canonical fields whose source column was
- *                    classified by Claude via /api/map-columns.
- *   • Missing      — canonical fields with no source column. Includes
- *                    fields that received a sensible default (task_id
- *                    auto-numbered, priority → Medium, etc.) with a
- *                    parenthetical note so the user knows the tool
- *                    handled the gap, not just dropped it.
+ * with the uploaded data, plus deterministic integrity checks that run
+ * against the current (post-edit) dataset on every render.
  */
 export function DataQualityBadge({ dataset }: DataQualityBadgeProps) {
   const aiSet = new Set<CanonicalField>(dataset.aiMappedFields ?? []);
@@ -29,10 +25,6 @@ export function DataQualityBadge({ dataset }: DataQualityBadgeProps) {
   const recognized = allSourceEntries.filter(([f]) => !aiSet.has(f));
   const matchedWithAI = allSourceEntries.filter(([f]) => aiSet.has(f));
 
-  // Missing now folds in inferredFields (defaulted/synthesized) — same
-  // root cause (no source column) with different post-processing.
-  // Render each with a description so defaults read as smart handling,
-  // not as gaps.
   const missingItems = [
     ...dataset.missingFields,
     ...dataset.inferredFields,
@@ -40,6 +32,11 @@ export function DataQualityBadge({ dataset }: DataQualityBadgeProps) {
     field: f,
     defaulted: inferredSet.has(f),
   }));
+
+  // Integrity checks run on every render so post-edit numbers stay
+  // honest (mark a row Done → completedButNotDone may shrink).
+  const integrity = runIntegrityChecks(dataset);
+  const clean = integrityIsClean(integrity);
 
   return (
     <div className="relative group">
@@ -54,7 +51,6 @@ export function DataQualityBadge({ dataset }: DataQualityBadgeProps) {
         Check data quality
       </button>
 
-      {/* Hover popover */}
       <div className="absolute right-0 top-full pt-2 z-30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity">
         <div className="w-80 p-5 card-surface rounded-md shadow-2xl space-y-4">
           <p className="text-xs text-secondary">
@@ -93,6 +89,37 @@ export function DataQualityBadge({ dataset }: DataQualityBadgeProps) {
             />
           )}
 
+          {/* Integrity checks — deterministic, recomputed per render. */}
+          <div>
+            <p className="text-[10px] text-muted uppercase tracking-widest mb-2">
+              Integrity checks
+            </p>
+            {clean ? (
+              <p className="text-xs text-secondary">
+                No integrity issues found.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                <IntegrityLine
+                  label="Duplicate task IDs"
+                  taskIds={integrity.duplicates}
+                />
+                <IntegrityLine
+                  label="Dates out of order"
+                  taskIds={integrity.datesOutOfOrder}
+                />
+                <IntegrityLine
+                  label="Completed date without Done status"
+                  taskIds={integrity.completedButNotDone}
+                />
+                <IntegrityLine
+                  label="Rows missing task name or status"
+                  taskIds={integrity.missingCritical}
+                />
+              </ul>
+            )}
+          </div>
+
           {dataset.parseErrors.length > 0 && (
             <div className="pt-3 border-t border-card-border">
               <p className="text-xs text-muted">
@@ -110,11 +137,32 @@ export function DataQualityBadge({ dataset }: DataQualityBadgeProps) {
   );
 }
 
-/**
- * Human-readable explanations for fields the pipeline defaulted instead
- * of leaving blank. Surfaces "the tool handled this" rather than "data
- * is broken."
- */
+function IntegrityLine({
+  label,
+  taskIds,
+}: {
+  label: string;
+  taskIds: string[];
+}) {
+  const count = taskIds.length;
+  // Show first 5 task IDs inline so the popover stays a fixed size.
+  const preview = taskIds.slice(0, 5).join(", ");
+  const more = taskIds.length > 5 ? `, +${taskIds.length - 5} more` : "";
+  return (
+    <li className="text-xs">
+      <span className={count > 0 ? "text-primary" : "text-secondary"}>
+        {label}: {count}
+      </span>
+      {count > 0 && (
+        <span className="text-muted font-mono ml-1">
+          ({preview}
+          {more})
+        </span>
+      )}
+    </li>
+  );
+}
+
 const DEFAULTED_DESCRIPTIONS: Partial<Record<CanonicalField, string>> = {
   task_id: "task IDs (auto-numbered)",
   task_name: "task name (we used the first text column)",
