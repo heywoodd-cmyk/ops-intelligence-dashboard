@@ -224,9 +224,13 @@ export default function Home() {
   return (
     <main className="min-h-screen">
       <div className="max-w-5xl mx-auto px-6 py-10 space-y-10">
-        {/* Header — unified for loaded + architecture states */}
-        <header className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
+        {/* Header — unified for loaded + architecture states.
+            flex-1 + min-w-0 on the left lets the tagline wrap inside
+            its column instead of pushing the right cluster to a new
+            row. flex-shrink-0 + no wrap on the right anchors the
+            controls to the top-right at any reasonable tagline length. */}
+        <header className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
             <h1 className="text-4xl font-medium tracking-tight text-primary mb-2">
               Operations Brief
             </h1>
@@ -237,7 +241,7 @@ export default function Home() {
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <ViewTabs value={view} onChange={setView} />
             {onDemoLoaded && (
               <>
