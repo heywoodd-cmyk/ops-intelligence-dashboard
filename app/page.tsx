@@ -23,6 +23,8 @@ import {
   KpiDrillModal,
   type KpiDrillKind,
 } from "@/components/KpiDrillModal";
+import { ViewTabs, type DashboardView } from "@/components/ViewTabs";
+import { ArchitectureView } from "@/components/ArchitectureView";
 import type {
   CanonicalStatus,
   NormalizedDataset,
@@ -121,6 +123,7 @@ export default function Home() {
   const [tableOpen, setTableOpen] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [kpiDrill, setKpiDrill] = useState<KpiDrillKind | null>(null);
+  const [view, setView] = useState<DashboardView>("demo");
 
   /** Track which task IDs differ from the original dataset by status. */
   const modifiedTaskIds = useMemo(() => {
@@ -190,10 +193,13 @@ export default function Home() {
     setTableOpen(false);
     setModal(null);
     setKpiDrill(null);
+    setView("demo");
   };
 
   // ---- Empty / upload state -------------------------------------------
-  if (!dataset) {
+  // Tabs deliberately hidden here per spec: empty upload screen stays
+  // clean. Architecture tab only appears after data is loaded.
+  if (view === "demo" && !dataset) {
     return (
       <main className="min-h-screen">
         <div className="max-w-2xl mx-auto px-4 py-20">
@@ -209,61 +215,81 @@ export default function Home() {
     );
   }
 
-  // ---- Loaded dashboard -----------------------------------------------
+  // ---- Loaded dashboard OR Architecture view --------------------------
+  // Reaching here implies either (view === "demo" && dataset !== null)
+  // or (view === "architecture") — the empty-state guard above handles
+  // the no-dataset Demo case.
+  const onDemoLoaded = view === "demo" && dataset !== null;
+
   return (
     <main className="min-h-screen">
       <div className="max-w-5xl mx-auto px-6 py-10 space-y-10">
-        {/* Header */}
+        {/* Header — unified for loaded + architecture states */}
         <header className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-4xl font-medium tracking-tight text-primary mb-2">
               Operations Brief
             </h1>
             <p className="text-sm text-secondary">{formatDate(new Date())}</p>
-            <p className="text-sm text-muted mt-1">{buildTagline(dataset)}</p>
+            {onDemoLoaded && (
+              <p className="text-sm text-muted mt-1">
+                {buildTagline(dataset!)}
+              </p>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <DataQualityBadge dataset={dataset} />
-            <button
-              onClick={handleNewUpload}
-              className="text-xs px-3 py-1.5 rounded-md border border-card-border transition-colors cursor-pointer flex items-center gap-1.5
-                         text-zinc-200 hover:text-zinc-50 hover:bg-[#1f1f23]"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to home
-            </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <ViewTabs value={view} onChange={setView} />
+            {onDemoLoaded && (
+              <>
+                <DataQualityBadge dataset={dataset!} />
+                <button
+                  onClick={handleNewUpload}
+                  className="text-xs px-3 py-1.5 rounded-md border border-card-border transition-colors cursor-pointer flex items-center gap-1.5
+                             text-zinc-200 hover:text-zinc-50 hover:bg-[#1f1f23]"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to home
+                </button>
+              </>
+            )}
           </div>
         </header>
 
-        <Hero
-          dataset={dataset}
-          onViewTasks={handleViewTasks}
-          onOpenModal={handleOpenModal}
-        />
+        {view === "architecture" ? (
+          <ArchitectureView />
+        ) : dataset ? (
+          <>
+            <Hero
+              dataset={dataset}
+              onViewTasks={handleViewTasks}
+              onOpenModal={handleOpenModal}
+            />
 
-        <KpiTiles dataset={dataset} onDrillThrough={setKpiDrill} />
+            <KpiTiles dataset={dataset} onDrillThrough={setKpiDrill} />
 
-        <AttentionList
-          dataset={dataset}
-          onTaskClick={handleTaskClick}
-          onOpenModal={handleOpenModal}
-        />
+            <AttentionList
+              dataset={dataset}
+              onTaskClick={handleTaskClick}
+              onOpenModal={handleOpenModal}
+            />
 
-        <WorkloadChart dataset={dataset} />
+            <WorkloadChart dataset={dataset} />
 
-        <TaskTable
-          dataset={dataset}
-          pinnedTaskId={pinnedTaskId}
-          onClearPin={() => setPinnedTaskId(null)}
-          open={tableOpen}
-          onOpenChange={setTableOpen}
-          filters={tableFilters}
-          onFiltersChange={setTableFilters}
-          onStatusChange={handleStatusChange}
-          modifiedTaskIds={modifiedTaskIds}
-          canReset={canReset}
-          onReset={handleReset}
-        />
+            <TaskTable
+              dataset={dataset}
+              pinnedTaskId={pinnedTaskId}
+              onClearPin={() => setPinnedTaskId(null)}
+              open={tableOpen}
+              onOpenChange={setTableOpen}
+              filters={tableFilters}
+              onFiltersChange={setTableFilters}
+              onStatusChange={handleStatusChange}
+              modifiedTaskIds={modifiedTaskIds}
+              canReset={canReset}
+              onReset={handleReset}
+            />
+          </>
+        ) : null}
       </div>
 
       <DraftActionModal
@@ -278,7 +304,7 @@ export default function Home() {
       <KpiDrillModal
         open={kpiDrill !== null}
         kind={kpiDrill}
-        dataset={dataset}
+        dataset={dataset ?? { tasks: [], rowCount: 0, today: "", sourceFields: {}, inferredFields: [], missingFields: [], hasAssignee: false, hasDueDate: false, hasStatus: false, hasPriority: false, hasDepartment: false, hasWeeklySnapshot: false, parseErrors: [] }}
         onStatusChange={handleStatusChange}
         onClose={() => setKpiDrill(null)}
       />
