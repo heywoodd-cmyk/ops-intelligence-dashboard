@@ -34,6 +34,23 @@ function formatDate(d: Date): string {
   });
 }
 
+/**
+ * One-line orientation message for non-technical viewers. Adapts to
+ * whether the dataset carries a department column.
+ */
+function buildTagline(dataset: NormalizedDataset): string {
+  const total = dataset.rowCount;
+  const taskWord = total === 1 ? "task" : "tasks";
+  if (dataset.hasDepartment) {
+    const depts = new Set(
+      dataset.tasks.map((t) => t.department).filter((d): d is string => !!d)
+    ).size;
+    const deptWord = depts === 1 ? "department" : "departments";
+    return `Tracking ${total} ${taskWord} across ${depts} ${deptWord}. Click any row, button, or filter to explore.`;
+  }
+  return `Tracking ${total} ${taskWord}. Click any row, button, or filter to explore.`;
+}
+
 /** Smooth scroll to the task table with a small offset for visual breathing room. */
 function scrollToTable() {
   const el = document.getElementById("task-table");
@@ -196,6 +213,7 @@ export default function Home() {
               Operations Brief
             </h1>
             <p className="text-sm text-secondary">{formatDate(new Date())}</p>
+            <p className="text-sm text-muted mt-1">{buildTagline(dataset)}</p>
           </div>
           <div className="flex items-center gap-2">
             <DataQualityBadge dataset={dataset} />

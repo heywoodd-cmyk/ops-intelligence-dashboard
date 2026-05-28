@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpCircle } from "lucide-react";
 import { computeWeeklyDelta } from "@/lib/comparisons";
 import type { NormalizedDataset } from "@/lib/schema";
 import { Sparkline } from "@/components/Sparkline";
@@ -65,6 +66,7 @@ export function KpiTiles({ dataset }: KpiTilesProps) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Tile
           label="Overdue"
+          tooltip="Tasks past their due date that aren't done yet."
           value={overdue}
           subline={delta ? formatDelta(overdue, delta.overduePrev, "") : null}
           sparkline={overdueSpark}
@@ -73,6 +75,7 @@ export function KpiTiles({ dataset }: KpiTilesProps) {
         />
         <Tile
           label="Blocked"
+          tooltip="Tasks where the assignee is waiting on something or someone."
           value={blocked}
           subline={delta ? formatDelta(blocked, delta.blockedPrev, "") : null}
           sparkline={blockedSpark}
@@ -80,7 +83,8 @@ export function KpiTiles({ dataset }: KpiTilesProps) {
           animationDelay="100ms"
         />
         <Tile
-          label="On track"
+          label="Completed"
+          tooltip="Percentage of tasks marked Done out of the total tracked."
           value={onTrack}
           suffix="%"
           subline={delta ? formatDelta(onTrack, delta.onTrackPrev, "%") : null}
@@ -95,6 +99,8 @@ export function KpiTiles({ dataset }: KpiTilesProps) {
 
 interface TileProps {
   label: string;
+  /** Plain-language definition shown on hovering the ? icon. Optional. */
+  tooltip?: string;
   /**
    * Numeric value when the tile should count-up; strings render as-is
    * (used for the degraded "Tasks loaded" tile, which has no animation
@@ -111,6 +117,7 @@ interface TileProps {
 
 function Tile({
   label,
+  tooltip,
   value,
   suffix = "",
   subline,
@@ -123,9 +130,12 @@ function Tile({
       className="card-surface rounded-md p-6 animate-fade-in-up"
       style={{ animationDelay }}
     >
-      <p className="text-xs text-muted uppercase tracking-widest mb-3">
-        {label}
-      </p>
+      <div className="flex items-center gap-1.5 mb-3">
+        <p className="text-xs text-muted uppercase tracking-widest">
+          {label}
+        </p>
+        {tooltip && <LabelTooltip text={tooltip} />}
+      </div>
       <p
         className="text-5xl font-medium font-mono tabular-nums tracking-tight"
         style={{ color }}
@@ -146,6 +156,28 @@ function Tile({
       )}
       {subline && <p className="text-xs text-muted mt-3">{subline}</p>}
     </div>
+  );
+}
+
+/**
+ * CSS-only hover tooltip. Sits above the help icon, fixed-width wrap.
+ * No library, no portal — relies on the parent being position: relative
+ * to anchor the absolute popover.
+ */
+function LabelTooltip({ text }: { text: string }) {
+  return (
+    <span className="relative inline-flex items-center group/tip">
+      <HelpCircle
+        className="w-3.5 h-3.5 text-zinc-500 hover:text-zinc-300 transition-colors cursor-help"
+        aria-label="Definition"
+      />
+      <span
+        role="tooltip"
+        className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover/tip:block w-48 card-surface px-3 py-2 text-xs text-secondary leading-relaxed rounded-md shadow-2xl z-20 normal-case tracking-normal font-normal"
+      >
+        {text}
+      </span>
+    </span>
   );
 }
 

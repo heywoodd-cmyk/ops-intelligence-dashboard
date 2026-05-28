@@ -201,6 +201,13 @@ export interface NormalizedDataset {
   sourceFields: Partial<Record<CanonicalField, string>>;
   inferredFields: CanonicalField[];
   missingFields: CanonicalField[];
+  /**
+   * Canonical fields whose source column was assigned by /api/map-columns
+   * (deterministic alias match failed; AI classified the header). Subset
+   * of sourceFields. Populated by CSVUpload after AI fallback; absent on
+   * datasets that took the pure-deterministic path.
+   */
+  aiMappedFields?: CanonicalField[];
 
   // Adaptive UI flags — components hide themselves when their source is missing
   hasAssignee: boolean;

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Papa from "papaparse";
 import { Upload, Loader2 } from "lucide-react";
 import {
+  CANONICAL_FIELDS,
   matchColumns,
   mergeAIMapping,
   normalizeDataset,
@@ -37,6 +38,7 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
     setLoading("Reading columns…");
     const match = matchColumns(rawRows);
     let finalMap = match.resolved;
+    const aiMappedFields: CanonicalField[] = [];
 
     if (match.unresolved.length > 0) {
       setLoading("Mapping unfamiliar columns with Claude…");
@@ -50,10 +52,21 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
           const { mapping } = (await res.json()) as {
             mapping: Record<string, CanonicalField | "ignore">;
           };
+          // Track which canonical fields the AI claimed (only those the
+          // deterministic match didn't already resolve). These surface
+          // under "Matched with AI" in the Data Quality badge.
+          for (const [, field] of Object.entries(mapping)) {
+            if (field === "ignore") continue;
+            if (!(CANONICAL_FIELDS as readonly string[]).includes(field))
+              continue;
+            const f = field as CanonicalField;
+            if (match.resolved[f]) continue;
+            if (aiMappedFields.includes(f)) continue;
+            aiMappedFields.push(f);
+          }
           finalMap = mergeAIMapping(match.resolved, mapping);
         }
         // On non-OK or network failure: keep deterministic-only mapping.
-        // Missing fields surface in the Data Quality badge — no crash.
       } catch {
         /* silent fallback */
       }
@@ -62,7 +75,7 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
     setLoading("Normalizing dataset…");
     const dataset = normalizeDataset(rawRows, finalMap);
     setLoading(null);
-    onDataset(dataset);
+    onDataset({ ...dataset, aiMappedFields });
   };
 
   const parseFile = (file: File) => {

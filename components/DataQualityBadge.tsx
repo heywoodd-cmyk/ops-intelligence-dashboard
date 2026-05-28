@@ -7,17 +7,39 @@ interface DataQualityBadgeProps {
 }
 
 /**
- * Top-right header pill. Hover reveals which canonical fields were
- * mapped, inferred (defaulted/synthesized), and missing from the upload.
- *
- * This is a credibility moment — show your work, no surprises.
+ * Top-right header pill. Hover reveals what the ingestion pipeline did
+ * with the uploaded data:
+ *   • Recognized   — canonical fields whose source column matched an
+ *                    alias deterministically (no AI involved).
+ *   • Matched with AI — canonical fields whose source column was
+ *                    classified by Claude via /api/map-columns.
+ *   • Missing      — canonical fields with no source column. Includes
+ *                    fields that received a sensible default (task_id
+ *                    auto-numbered, priority → Medium, etc.) with a
+ *                    parenthetical note so the user knows the tool
+ *                    handled the gap, not just dropped it.
  */
 export function DataQualityBadge({ dataset }: DataQualityBadgeProps) {
-  const mapped = Object.entries(dataset.sourceFields) as Array<
+  const aiSet = new Set<CanonicalField>(dataset.aiMappedFields ?? []);
+  const inferredSet = new Set<CanonicalField>(dataset.inferredFields);
+
+  const allSourceEntries = Object.entries(dataset.sourceFields) as Array<
     [CanonicalField, string]
   >;
-  const inferred = dataset.inferredFields;
-  const missing = dataset.missingFields;
+  const recognized = allSourceEntries.filter(([f]) => !aiSet.has(f));
+  const matchedWithAI = allSourceEntries.filter(([f]) => aiSet.has(f));
+
+  // Missing now folds in inferredFields (defaulted/synthesized) — same
+  // root cause (no source column) with different post-processing.
+  // Render each with a description so defaults read as smart handling,
+  // not as gaps.
+  const missingItems = [
+    ...dataset.missingFields,
+    ...dataset.inferredFields,
+  ].map((f) => ({
+    field: f,
+    defaulted: inferredSet.has(f),
+  }));
 
   return (
     <div className="relative group">
@@ -32,33 +54,45 @@ export function DataQualityBadge({ dataset }: DataQualityBadgeProps) {
         Data quality
       </button>
 
-      {/* Hover popover — pt-2 gap absorbs cursor movement */}
+      {/* Hover popover */}
       <div className="absolute right-0 top-full pt-2 z-30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity">
         <div className="w-80 p-5 card-surface rounded-md shadow-2xl space-y-4">
-          {mapped.length > 0 && (
+          <p className="text-xs text-secondary">
+            Here&apos;s what we found in your data:
+          </p>
+
+          {recognized.length > 0 && (
             <Section
-              label="Mapped"
-              count={mapped.length}
-              items={mapped.map(
-                ([field, source]) => `${field} ← ${source}`
+              label="Recognized"
+              count={recognized.length}
+              items={recognized.map(
+                ([field, source]) => `${prettyField(field)} ← ${source}`
               )}
             />
           )}
-          {inferred.length > 0 && (
+
+          {matchedWithAI.length > 0 && (
             <Section
-              label="Inferred"
-              count={inferred.length}
-              items={inferred.map((f) => `${f}`)}
-              note="defaulted or synthesized"
+              label="Matched with AI"
+              count={matchedWithAI.length}
+              items={matchedWithAI.map(
+                ([field, source]) => `${prettyField(field)} ← ${source}`
+              )}
             />
           )}
-          {missing.length > 0 && (
+
+          {missingItems.length > 0 && (
             <Section
               label="Missing"
-              count={missing.length}
-              items={missing.map((f) => `${f}`)}
+              count={missingItems.length}
+              items={missingItems.map(({ field, defaulted }) =>
+                defaulted
+                  ? DEFAULTED_DESCRIPTIONS[field] ?? prettyField(field)
+                  : prettyField(field)
+              )}
             />
           )}
+
           {dataset.parseErrors.length > 0 && (
             <div className="pt-3 border-t border-card-border">
               <p className="text-xs text-muted">
@@ -76,28 +110,39 @@ export function DataQualityBadge({ dataset }: DataQualityBadgeProps) {
   );
 }
 
+/**
+ * Human-readable explanations for fields the pipeline defaulted instead
+ * of leaving blank. Surfaces "the tool handled this" rather than "data
+ * is broken."
+ */
+const DEFAULTED_DESCRIPTIONS: Partial<Record<CanonicalField, string>> = {
+  task_id: "task IDs (auto-numbered)",
+  task_name: "task name (we used the first text column)",
+  status: "status (we used Unknown)",
+  priority: "priority (we used Medium)",
+};
+
+function prettyField(f: CanonicalField): string {
+  return f.replace(/_/g, " ");
+}
+
 function Section({
   label,
   count,
   items,
-  note,
 }: {
   label: string;
   count: number;
   items: string[];
-  note?: string;
 }) {
   return (
     <div>
       <p className="text-[10px] text-muted uppercase tracking-widest mb-2">
         {label} · {count}
-        {note ? (
-          <span className="normal-case tracking-normal"> — {note}</span>
-        ) : null}
       </p>
       <ul className="space-y-1">
         {items.map((item) => (
-          <li key={item} className="text-xs text-secondary font-mono">
+          <li key={item} className="text-xs text-secondary">
             {item}
           </li>
         ))}

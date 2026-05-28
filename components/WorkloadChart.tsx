@@ -19,6 +19,18 @@ interface WorkloadChartProps {
 
 type GroupBy = "Department" | "Assignee";
 
+// Display labels kept separate from the internal GroupBy state value so
+// the toggle reads "By Person" while the data path stays keyed on
+// task.assignee. Verb-based labels per the non-technical viewer brief.
+const TOGGLE_LABEL: Record<GroupBy, string> = {
+  Department: "By Department",
+  Assignee: "By Person",
+};
+const HEADING_LABEL: Record<GroupBy, string> = {
+  Department: "Workload by department",
+  Assignee: "Workload by person",
+};
+
 // Palette per Friday-demo spec — tonal zinc with rose for Blocked.
 const STATUS_COLORS: Record<string, string> = {
   Done: "#3f3f46",          // zinc-700
@@ -86,7 +98,7 @@ export function WorkloadChart({ dataset }: WorkloadChartProps) {
     <section>
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs text-muted uppercase tracking-widest">
-          Workload by {effectiveGroup.toLowerCase()}
+          {HEADING_LABEL[effectiveGroup]}
         </p>
         {dataset.hasDepartment && dataset.hasAssignee && (
           <GroupByToggle value={effectiveGroup} onChange={setGroupBy} />
@@ -174,7 +186,7 @@ function GroupByToggle({
                 : "text-muted hover:text-secondary"
             }`}
           >
-            {opt}
+            {TOGGLE_LABEL[opt]}
           </button>
         );
       })}
