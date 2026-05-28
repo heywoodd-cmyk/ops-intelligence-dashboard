@@ -178,13 +178,14 @@ function DraftActionModalContent({
         onClick={(e) => e.stopPropagation()}
         className="card-surface rounded-lg max-w-2xl w-full p-8 animate-modal-in relative"
       >
-        {/* Close button — always visible */}
+        {/* Close button — always visible. ESC and click-outside also close. */}
         <button
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-4 right-4 text-muted hover:text-primary p-1 rounded transition-colors"
+          className="absolute top-4 right-4 p-1.5 rounded-md transition-colors cursor-pointer
+                     text-zinc-400 hover:text-zinc-50 hover:bg-[#1f1f23]"
         >
-          <X className="w-4 h-4" />
+          <X className="w-[18px] h-[18px]" />
         </button>
 
         {/* Header */}

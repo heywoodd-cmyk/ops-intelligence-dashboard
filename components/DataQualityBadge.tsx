@@ -51,7 +51,7 @@ export function DataQualityBadge({ dataset }: DataQualityBadgeProps) {
           className="w-1.5 h-1.5 rounded-full animate-pulse-soft"
           style={{ backgroundColor: "#8b5cf6" }}
         />
-        Data quality
+        Check data quality
       </button>
 
       {/* Hover popover */}

@@ -17,6 +17,11 @@ interface CSVUploadProps {
   onDataset: (dataset: NormalizedDataset) => void;
 }
 
+const NOT_A_TASK_LIST_MSG =
+  "That doesn't look like a task list. Try a CSV with columns like task, status, owner, or due date.";
+
+const ROSE = "rgba(244, 63, 94, 0.9)";
+
 /**
  * Single-pipeline upload. Every CSV runs:
  *   1. PapaParse → row objects
@@ -24,16 +29,27 @@ interface CSVUploadProps {
  *   3. /api/map-columns for any unresolved headers (silent fallback if it fails)
  *   4. normalizeDataset → canonical NormalizedDataset
  *
- * No mapping confirmation screen, no validation screen. The DataQualityBadge
- * in the header surfaces what was mapped/inferred/missing.
+ * Gracefully refuses bad uploads (non-CSV, empty, or clearly not a task
+ * list — no task_name or task_id resolved) with a friendly message
+ * below the dropzone. The dropzone stays visible so the user can drop
+ * a different file without restarting the flow.
  */
 export function CSVUpload({ onDataset }: CSVUploadProps) {
   const [dragging, setDragging] = useState(false);
-  const [loading, setLoading] = useState<string | null>(null); // status label
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const fail = (message: string) => {
+    setLoading(null);
+    setError(message);
+  };
+
   const runPipeline = async (rawRows: Record<string, string>[]) => {
-    if (rawRows.length === 0) return;
+    if (rawRows.length === 0) {
+      fail(NOT_A_TASK_LIST_MSG);
+      return;
+    }
 
     setLoading("Reading columns…");
     const match = matchColumns(rawRows);
@@ -52,9 +68,6 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
           const { mapping } = (await res.json()) as {
             mapping: Record<string, CanonicalField | "ignore">;
           };
-          // Track which canonical fields the AI claimed (only those the
-          // deterministic match didn't already resolve). These surface
-          // under "Matched with AI" in the Data Quality badge.
           for (const [, field] of Object.entries(mapping)) {
             if (field === "ignore") continue;
             if (!(CANONICAL_FIELDS as readonly string[]).includes(field))
@@ -66,36 +79,54 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
           }
           finalMap = mergeAIMapping(match.resolved, mapping);
         }
-        // On non-OK or network failure: keep deterministic-only mapping.
       } catch {
         /* silent fallback */
       }
     }
 
+    // Sanity check: if neither task_name nor task_id resolved to a real
+    // source column, this clearly isn't a task list.
+    if (!finalMap.task_name && !finalMap.task_id) {
+      fail(NOT_A_TASK_LIST_MSG);
+      return;
+    }
+
     setLoading("Normalizing dataset…");
     const dataset = normalizeDataset(rawRows, finalMap);
     setLoading(null);
+    setError(null);
     onDataset({ ...dataset, aiMappedFields });
   };
 
   const parseFile = (file: File) => {
+    setError(null);
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      fail(NOT_A_TASK_LIST_MSG);
+      return;
+    }
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (result) => runPipeline(result.data),
+      complete: (result) => {
+        // PapaParse rarely throws; it reports issues via result.errors.
+        // Treat the file as unparseable when no data came back at all.
+        if (!result.data || result.data.length === 0) {
+          fail(NOT_A_TASK_LIST_MSG);
+          return;
+        }
+        runPipeline(result.data);
+      },
+      error: () => fail(NOT_A_TASK_LIST_MSG),
     });
   };
 
   const loadSampleFile = async (filename: string) => {
+    setError(null);
     setLoading("Loading sample…");
     try {
       const res = await fetch(`/${filename}`);
       if (!res.ok) {
-        setLoading(null);
-        // eslint-disable-next-line no-alert
-        alert(
-          `${filename} isn't available yet. (Generated in Phase 4 of the refactor.)`
-        );
+        fail(NOT_A_TASK_LIST_MSG);
         return;
       }
       const text = await res.text();
@@ -105,7 +136,7 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
       });
       runPipeline(result.data);
     } catch {
-      setLoading(null);
+      fail(NOT_A_TASK_LIST_MSG);
     }
   };
 
@@ -118,11 +149,17 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file && file.name.endsWith(".csv")) parseFile(file);
+    if (file) parseFile(file);
   };
 
   return (
     <div className="flex flex-col items-center justify-center gap-8 px-4">
+      {/* Plain-language intro for non-technical viewers. */}
+      <p className="text-base text-zinc-400 text-center max-w-xl leading-relaxed">
+        Upload a list of your team&apos;s tasks. This turns it into a clear
+        picture of what&apos;s overdue, what&apos;s stuck, and what to do next.
+      </p>
+
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -142,7 +179,8 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
           Drop CSV here or click to browse
         </p>
         <p className="text-xs text-muted">
-          Any column names — unrecognized ones get mapped automatically.
+          Your file doesn&apos;t need a specific format. Whatever columns you
+          have, the tool figures them out.
         </p>
         <input
           ref={inputRef}
@@ -153,29 +191,44 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
         />
       </div>
 
+      {error && (
+        <p
+          className="text-sm text-center max-w-xl"
+          style={{ color: ROSE }}
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
+
       <div className="flex items-center gap-3 text-muted text-xs">
         <span className="h-px w-12 bg-card-border" />
         <span>or load a sample</span>
         <span className="h-px w-12 bg-card-border" />
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap justify-center">
-        <SampleButton
-          label="Clean sample"
-          onClick={() => loadSampleFile("sample-clean.csv")}
-          disabled={loading !== null}
-          primary
-        />
-        <SampleButton
-          label="Messy sample"
-          onClick={() => loadSampleFile("sample-messy.csv")}
-          disabled={loading !== null}
-        />
-        <SampleButton
-          label="Sparse sample"
-          onClick={() => loadSampleFile("sample-sparse.csv")}
-          disabled={loading !== null}
-        />
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-center">
+          <SampleButton
+            label="Clean sample"
+            onClick={() => loadSampleFile("sample-clean.csv")}
+            disabled={loading !== null}
+            primary
+          />
+          <SampleButton
+            label="Messy sample"
+            onClick={() => loadSampleFile("sample-messy.csv")}
+            disabled={loading !== null}
+          />
+          <SampleButton
+            label="Sparse sample"
+            onClick={() => loadSampleFile("sample-sparse.csv")}
+            disabled={loading !== null}
+          />
+        </div>
+        <p className="text-xs text-zinc-500">
+          New here? Start with Clean sample.
+        </p>
       </div>
 
       {loading && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { CSVUpload } from "@/components/CSVUpload";
 import { Hero } from "@/components/Hero";
 import { KpiTiles } from "@/components/KpiTiles";
@@ -219,9 +220,11 @@ export default function Home() {
             <DataQualityBadge dataset={dataset} />
             <button
               onClick={handleNewUpload}
-              className="text-xs text-muted hover:text-secondary px-3 py-1.5 rounded-md border border-card-border transition-colors"
+              className="text-xs px-3 py-1.5 rounded-md border border-card-border transition-colors cursor-pointer flex items-center gap-1.5
+                         text-zinc-200 hover:text-zinc-50 hover:bg-[#1f1f23]"
             >
-              New upload
+              <ArrowLeft className="w-4 h-4" />
+              Upload new file
             </button>
           </div>
         </header>
