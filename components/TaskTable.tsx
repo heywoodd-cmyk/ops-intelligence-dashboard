@@ -292,7 +292,10 @@ function FilterBar({
         <button
           onClick={clear}
           disabled={!isDirty}
-          className="text-xs text-muted hover:text-secondary disabled:opacity-30 disabled:cursor-default px-2.5 py-1.5 rounded-md hover:bg-card-border transition-colors"
+          className="text-xs px-2.5 py-1.5 rounded-md transition-colors cursor-pointer
+                     text-zinc-200 hover:text-zinc-50 hover:bg-[#1f1f23]
+                     disabled:cursor-default disabled:text-zinc-600
+                     disabled:hover:bg-transparent disabled:hover:text-zinc-600"
         >
           Clear filters
         </button>
@@ -300,7 +303,11 @@ function FilterBar({
           onClick={onReset}
           disabled={!canReset}
           title="Discard all status edits and restore the originally loaded data"
-          className="text-xs text-muted hover:text-secondary disabled:opacity-30 disabled:cursor-default px-2.5 py-1.5 rounded-md hover:bg-card-border transition-colors flex items-center gap-1.5"
+          className="text-xs px-2.5 py-1.5 rounded-md transition-colors cursor-pointer
+                     flex items-center gap-1.5
+                     text-zinc-200 hover:text-zinc-50 hover:bg-[#1f1f23]
+                     disabled:cursor-default disabled:text-zinc-600
+                     disabled:hover:bg-transparent disabled:hover:text-zinc-600"
         >
           <RotateCcw className="w-3 h-3" />
           Reset to original
