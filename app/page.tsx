@@ -230,7 +230,7 @@ export default function Home() {
                          text-zinc-200 hover:text-zinc-50 hover:bg-[#1f1f23]"
             >
               <ArrowLeft className="w-4 h-4" />
-              Upload new file
+              Back to home
             </button>
           </div>
         </header>

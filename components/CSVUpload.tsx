@@ -218,17 +218,20 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
         <div className="flex items-center gap-2 flex-wrap justify-center">
           <SampleButton
             label="Clean sample"
+            tooltip="A standard task list. Everything formatted normally. Best starting point to see what the tool does."
             onClick={() => loadSampleFile("sample-clean.csv")}
             disabled={loading !== null}
             primary
           />
           <SampleButton
             label="Messy sample"
+            tooltip="A real-world file with renamed columns and inconsistent values. Shows how the tool figures out unfamiliar data."
             onClick={() => loadSampleFile("sample-messy.csv")}
             disabled={loading !== null}
           />
           <SampleButton
             label="Sparse sample"
+            tooltip="A bare-bones file missing several columns. Shows how the tool adapts when data is incomplete."
             onClick={() => loadSampleFile("sample-sparse.csv")}
             disabled={loading !== null}
           />
@@ -250,26 +253,49 @@ export function CSVUpload({ onDataset }: CSVUploadProps) {
 
 function SampleButton({
   label,
+  tooltip,
   onClick,
   disabled,
   primary,
 }: {
   label: string;
+  tooltip?: string;
   onClick: () => void;
   disabled?: boolean;
   primary?: boolean;
 }) {
+  const baseClasses =
+    "relative group/sample text-sm px-4 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+  const variantClasses = primary
+    ? "font-medium bg-violet-600 hover:bg-violet-500 text-white"
+    : "text-secondary hover:bg-card-border";
+
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={
-        primary
-          ? "text-sm font-medium px-4 py-2 rounded-md bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          : "text-sm text-secondary px-4 py-2 rounded-md hover:bg-card-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      }
+      className={`${baseClasses} ${variantClasses}`}
     >
       {label}
+      {tooltip && (
+        <span
+          role="tooltip"
+          // Hover-only CSS tooltip. The delay is applied only on the
+          // hover→visible transition (via group-hover:delay-300), so
+          // the tooltip waits 300ms to appear but vanishes immediately
+          // on mouse-leave. pointer-events-none keeps clicks falling
+          // through to the underlying button.
+          className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64
+                     card-surface px-3 py-2 text-xs text-secondary leading-relaxed
+                     rounded-md shadow-2xl text-left whitespace-normal
+                     normal-case tracking-normal font-normal
+                     opacity-0 pointer-events-none z-20
+                     transition-opacity duration-100 ease-out
+                     group-hover/sample:opacity-100 group-hover/sample:delay-300"
+        >
+          {tooltip}
+        </span>
+      )}
     </button>
   );
 }
