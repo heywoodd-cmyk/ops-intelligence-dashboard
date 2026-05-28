@@ -2,125 +2,26 @@
 
 /**
  * Static "Architecture" view. Shows how the demo dashboard would map
- * onto a real LiveTrends-scale pipeline. Three sections:
- *   1. Diagram (inline SVG) with title + subtitle above
- *   2. "What changes at scale" — five short paragraphs in a card
- *   3. "Where verifiability lives" — three bullets in a card
+ * onto a real production pipeline.
+ *
+ * Content: title + subtitle + diagram. The talk-track for "what changes
+ * at scale" and "where verifiability lives" is delivered verbally on
+ * top of this visual — intentionally not on screen.
  *
  * No new dependencies. Pure SVG, all coordinates inlined.
  */
 export function ArchitectureView() {
   return (
-    <div className="space-y-10">
-      {/* Section 1 — diagram */}
-      <section>
-        <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 mb-2">
-          How this would work at LiveTrends scale
-        </h2>
-        <p className="text-sm text-zinc-400 mb-6 max-w-2xl leading-relaxed">
-          Today the dashboard parses a CSV in the browser. At scale, the
-          same UX sits on top of a real data pipeline.
-        </p>
-        <Diagram />
-      </section>
-
-      {/* Section 2 — what changes at scale */}
-      <section className="card-surface rounded-md p-8 space-y-5">
-        <h3 className="text-xs text-muted uppercase tracking-widest">
-          What changes at scale
-        </h3>
-        <Para title="Why a warehouse exists.">
-          You can&apos;t run analytical queries against the systems that run
-          the business. They&apos;ll buckle, and you can&apos;t fix sources you
-          don&apos;t own. So you copy everything into one place and impose
-          consistency on the way in.
-        </Para>
-        <Para title="Why ELT, not ETL.">
-          Extract from sources, Load the raw data unchanged first, then
-          Transform inside the warehouse with version-controlled SQL.
-          Retailer feeds change format constantly. If you transform before
-          loading, a format change destroys data you can&apos;t get back.
-          Keep the raw bytes, and you can always replay.
-        </Para>
-        <Para title="How AI fits in without becoming a liability.">
-          AI never sees raw rows. It reads from the same clean marts the
-          dashboard reads from. It can write queries against that clean
-          layer, but it can&apos;t hallucinate numbers, because the numbers
-          it returns are computed by SQL, not generated.
-        </Para>
-        <Para title="Batch vs live.">
-          Most decisions don&apos;t need real-time data. Live feeds multiply
-          failure modes for marginal value. Default to nightly batch with
-          a clear SLA. Move specific feeds to streaming only when a
-          business case demands it.
-        </Para>
-        <Para title="What this dashboard becomes.">
-          The demo you&apos;re looking at parses a CSV in the browser. That
-          works up to about 10,000 rows. At LiveTrends scale, the same
-          dashboard becomes a thin query layer over the warehouse. Same
-          UX, completely different plumbing. The architecture is designed
-          for that swap from day one.
-        </Para>
-      </section>
-
-      {/* Section 3 — verifiability */}
-      <section className="card-surface rounded-md p-8 space-y-4">
-        <h3 className="text-xs text-muted uppercase tracking-widest">
-          Where verifiability lives
-        </h3>
-        <Bullet title="Lineage.">
-          Every number traces back through dbt&apos;s lineage graph to the
-          exact raw rows. Drill-through in the demo is the seed of this.
-        </Bullet>
-        <Bullet title="Validation gates.">
-          dbt tests run on every transform: row counts, freshness,
-          uniqueness, totals reconcile. Bad data never reaches the marts.
-        </Bullet>
-        <Bullet title="Reconciliation.">
-          Warehouse totals tie back to source-of-record systems. If a
-          retailer says they sold 12,000 units of a SKU and the warehouse
-          says 11,800, you know within hours, not weeks.
-        </Bullet>
-      </section>
-    </div>
-  );
-}
-
-function Para({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p className="text-sm text-zinc-200 leading-relaxed">
-        <span className="font-semibold">{title}</span>{" "}
-        <span className="text-zinc-400">{children}</span>
+    <section>
+      <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 mb-2">
+        How this would work at scale
+      </h2>
+      <p className="text-sm text-zinc-400 mb-6 max-w-2xl leading-relaxed">
+        Today the dashboard parses a CSV in the browser. At scale, the
+        same UX sits on top of a real data pipeline.
       </p>
-    </div>
-  );
-}
-
-function Bullet({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex gap-3 items-start">
-      <span
-        className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0"
-        style={{ backgroundColor: "#8b5cf6" }}
-      />
-      <p className="text-sm text-zinc-200 leading-relaxed">
-        <span className="font-semibold">{title}</span>{" "}
-        <span className="text-zinc-400">{children}</span>
-      </p>
-    </div>
+      <Diagram />
+    </section>
   );
 }
 
